@@ -1,0 +1,15 @@
+# Đường dẫn đến thư mục datasets (bạn có thể cần sửa lại đường dẫn tuyệt đối nếu lỗi)
+path: ./datasets
+
+# Đường dẫn ảnh train và val
+train: images/train
+val: images/val
+
+# Số lượng class (loại xe)
+nc: 3
+
+# Tên các class (Thứ tự cực kỳ quan trọng, phải khớp với lúc gán nhãn)
+names:
+  0: ambulance  # Xe cứu thương
+  1: firetruck  # Xe cứu hỏa
+  2: police     # Xe cảnh sát
