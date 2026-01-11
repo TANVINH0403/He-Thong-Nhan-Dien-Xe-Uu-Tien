@@ -1,9 +1,15 @@
+import logging
 from fastapi import FastAPI
-from api.upload import router as upload_router
-from api.websocket import router as ws_router
 from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Emergency Vehicle Detection Backend")
+from api.upload import router as upload_router
+from api.process import router as process_router
+from api.websocket import router as ws_router
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("main")
+
+app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,9 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(upload_router)
+app.include_router(upload_router, prefix="/videos")
+app.include_router(process_router, prefix="/videos")
 app.include_router(ws_router)
 
 @app.get("/")
-def root():
-    return {"message": "Backend is running"}
+def health():
+    return {"status": "ok"}
