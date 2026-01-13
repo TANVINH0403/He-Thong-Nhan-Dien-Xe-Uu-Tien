@@ -83,21 +83,6 @@ export default function VideoPlayer() {
           <div className="placeholder-bg"></div>
         )}
 
-        {/* Bounding box (Chỉ hiện khi video đang phát để demo) */}
-        {isPlaying && (
-          <div className="bounding-box box-ambulance">
-            <div className="box-label red-bg">
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: "12px" }}
-              >
-                local_hospital
-              </span>
-              XE CỨU THƯƠNG 98%
-            </div>
-          </div>
-        )}
-
         {/* Overlay Controls (Thanh điều khiển trên video) */}
         <div className="controls-overlay">
           <div className="control-row">
