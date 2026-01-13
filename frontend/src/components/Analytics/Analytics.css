@@ -1,0 +1,118 @@
+.analytics-container {
+  padding: 24px;
+  height: 100%;
+  overflow-y: auto;
+}
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.chart-card,
+.table-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+/* Simple CSS Chart */
+.simple-bar-chart {
+  height: 150px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  margin-top: 20px;
+  border-bottom: 2px solid var(--border-color);
+}
+.bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  justify-content: flex-end;
+}
+.bar {
+  width: 40px;
+  border-radius: 4px 4px 0 0;
+  animation: grow 1s ease-out;
+}
+.bar.red {
+  background: var(--emergency-red);
+}
+.bar.orange {
+  background: var(--emergency-orange);
+}
+.bar.blue {
+  background: var(--primary);
+}
+span {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+@keyframes grow {
+  from {
+    height: 0;
+  }
+}
+
+/* Stats */
+.stats-row {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 30px;
+}
+.big-num {
+  display: block;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+.big-num.success {
+  color: var(--success-green);
+}
+
+/* Table */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th {
+  text-align: left;
+  color: var(--text-muted);
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.data-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-weight: 500;
+}
+.text-red {
+  color: var(--emergency-red);
+  font-weight: 700;
+}
+.text-orange {
+  color: var(--emergency-orange);
+  font-weight: 700;
+}
+.badge {
+  padding: 4px 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+}
+.badge.pending {
+  background: #fff7ed;
+  color: #c2410c;
+}
