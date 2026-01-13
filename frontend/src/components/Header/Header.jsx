@@ -60,14 +60,6 @@ export default function Header({ onNavigate, activePage }) {
         <button className="btn-icon">
           <span className="material-symbols-outlined">notifications</span>
         </button>
-        <div className="divider"></div>
-        <div className="user-profile">
-          <div className="user-text">
-            <span className="user-role">Quản trị viên</span>
-            <span className="user-id">ID: 4429</span>
-          </div>
-          <div className="avatar"></div>
-        </div>
       </div>
     </header>
   );
