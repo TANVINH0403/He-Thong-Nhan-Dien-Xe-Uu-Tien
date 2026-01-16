@@ -10,6 +10,50 @@ export default function Sidebar() {
     alert(`Đang mở thông tin chi tiết cho xe ID: ${id}`);
   };
 
+  const getClassInfo = (cls) => {
+    const c = cls.toLowerCase();
+    if (c.includes("ambulance")) {
+      return {
+        label: "Xe Cứu Thương",
+        colorClass: "item-red",
+        bgSoft: "red-bg-soft",
+        textClass: "red-text",
+        bgTag: "red-bg",
+        icon: "local_hospital",
+        tag: "KHẨN CẤP"
+      };
+    } else if (c.includes("fire")) {
+      return {
+        label: "Xe Cứu Hỏa",
+        colorClass: "item-orange",
+        bgSoft: "orange-bg-soft",
+        textClass: "orange-text",
+        bgTag: "orange-bg",
+        icon: "fire_truck",
+        tag: "ƯU TIÊN"
+      };
+    } else if (c.includes("police")) {
+      return {
+        label: "Xe Cảnh Sát",
+        colorClass: "item-blue", // Cần thêm class blue trong css nếu chưa có, tạm thời dùng default style
+        bgSoft: "blue-bg-soft",
+        textClass: "blue-text",
+        bgTag: "blue-bg",
+        icon: "local_police",
+        tag: "CẢNH SÁT"
+      };
+    }
+    return {
+      label: "Xe Ưu Tiên",
+      colorClass: "item-gray",
+      bgSoft: "gray-bg-soft",
+      textClass: "gray-text",
+      bgTag: "gray-bg",
+      icon: "warning",
+      tag: "KHÁC"
+    };
+  };
+
   return (
     <aside className="sidebar">
       <div className="tabs">

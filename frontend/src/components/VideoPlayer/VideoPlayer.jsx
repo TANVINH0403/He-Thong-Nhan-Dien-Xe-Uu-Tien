@@ -11,25 +11,120 @@ export default function VideoPlayer(props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [videoSource, setVideoSource] = useState("RTMP_STREAM_HD_04");
   const [videoUrl, setVideoUrl] = useState(null); // Lưu đường dẫn video để phát
+  const [boundingBoxes, setBoundingBoxes] = useState([]); // State lưu danh sách box
+
+  // Refs for logic
+  const seenVehiclesRef = useRef(new Set());
+  const lastFrameTimeRef = useRef(performance.now());
+  const frameCountRef = useRef(0);
 
   // 1. Xử lý khi chọn file từ máy tính
+  const [status, setStatus] = useState("");
+
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (file) {
       console.log("File đã chọn:", file.name);
+      const formData = new FormData();
+      formData.append("file", file);
+      setStatus("Đang upload...");
 
-      // Tạo URL tạm thời cho file video để trình duyệt có thể phát
-      const url = URL.createObjectURL(file);
-      setVideoUrl(url);
-      setVideoSource(file.name);
-      setVideoUrl(URL.createObjectURL(file));
-      // Reset trạng thái nút về "Bắt đầu" khi tải video mới
-      setIsPlaying(false);
-      setBoundingBoxes([]); // Xóa box cũ
-      seenVehiclesRef.current.clear(); // Reset seen vehicles
-      connectWebsocket(data.video_id);
+      try {
+        const response = await fetch("http://127.0.0.1:8000/videos/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error("Upload thất bại");
+
+        const data = await response.json();
+        setStatus("Upload thành công! video_id: " + data.video_id);
+
+        setVideoSource(file.name);
+        setVideoUrl(URL.createObjectURL(file));
+        setIsPlaying(false);
+        setBoundingBoxes([]);
+        seenVehiclesRef.current.clear();
+        connectWebsocket(data.video_id);
+      } catch (err) {
+        setStatus("Lỗi khi upload: " + err.message);
+      }
     }
   };
+
+
+  function connectWebsocket(videoId) {
+    const socket = new WebSocket(`ws://127.0.0.1:8000/ws/process/${videoId}`);
+
+    socket.onopen = () => {
+      console.log("Websocket connected");
+      lastFrameTimeRef.current = performance.now();
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      // Calculate FPS
+      const now = performance.now();
+      const delta = now - lastFrameTimeRef.current;
+      lastFrameTimeRef.current = now;
+      const currentFps = delta > 0 ? Math.round(1000 / delta) : 0;
+
+      // Throttle stats updates (every 10 frames)
+      frameCountRef.current += 1;
+      if (frameCountRef.current % 10 === 0) {
+        if (props.onStatsUpdate) {
+          props.onStatsUpdate({
+            fps: currentFps > 60 ? 60 : currentFps, // Cap at 60 for sanity
+            latency: Math.round(delta), // Rough frame time as latency
+          });
+        }
+      }
+
+      // data format: { frame_index, vehicles: [{ vehicle_id, class, direction, score, bbox: [x1, y1, x2, y2] }] }
+      if (data.vehicles) {
+        setBoundingBoxes(data.vehicles);
+
+        // Check for new detections
+        data.vehicles.forEach(vehicle => {
+          const vid = vehicle.vehicle_id;
+          const cls = vehicle.class.toLowerCase();
+
+          // Should be a priority vehicle
+          const isPriority = ["ambulance", "police", "fire_truck", "fire", "firetruck"].some(p => cls.includes(p));
+
+          if (isPriority && !seenVehiclesRef.current.has(vid)) {
+            seenVehiclesRef.current.add(vid);
+
+            if (props.onNewDetection) {
+              props.onNewDetection({
+                id: vid,
+                vehicle_id: vid,
+                class: vehicle.class,
+                score: vehicle.score || 0.0,
+                direction: vehicle.direction,
+                time: new Date().toLocaleTimeString('vi-VN', { hour12: false })
+              });
+            }
+          }
+        });
+      }
+    };
+
+    socket.onclose = () => {
+      console.log("Websocket closed");
+    };
+
+    socket.onerror = (error) => {
+      console.error("Websocket error:", error);
+    };
+  }
+
+  async function getVideoInfo(videoId) {
+    const response = await fetch(`http://127.0.0.1:8000/videos/info/${videoId}`);
+    const data = await response.json();
+    console.log("thông tin video:", data);
+  }
 
   // 2. Xử lý nút Bắt Đầu / Dừng Lại
   const handleStart = () => {
