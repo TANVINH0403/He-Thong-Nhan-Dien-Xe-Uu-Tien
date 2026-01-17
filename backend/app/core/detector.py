@@ -32,24 +32,38 @@ class VehicleDetector:
         
         detections = []
         
+        # Mapping simulation for standard YOLOv8n model
+        # bus -> ambulance
+        # truck -> fire truck
+        # car -> police car (simulated)
+        
         for box in results.boxes:
             # Lấy thông tin cơ bản
             cls_id = int(box.cls[0])
-            label = self.model.names[cls_id].lower()
+            raw_label = self.model.names[cls_id].lower()
             conf = float(box.conf[0])
 
-            # Kiểm tra nếu là xe ưu tiên và độ tin cậy đạt yêu cầu
-            if label in self.priority_labels and conf >= self.confidence_threshold:
+            # Simulation Logic
+            mapped_label = None
+            if raw_label == "bus":
+                mapped_label = "ambulance"
+            elif raw_label == "truck":
+                mapped_label = "fire truck"
+            elif raw_label == "motorcycle": # Use motorcycle for police to vary it
+                mapped_label = "police car"
+            elif raw_label == "car" and conf > 0.7: # Simulate some cars as police if high confidence
+                 # Just for demo variety, maybe skip cars to avoid noise or map specific ones
+                 pass 
+
+            if mapped_label and conf >= self.confidence_threshold:
                 # Lấy tọa độ ô vuông (Bounding Box) [x1, y1, x2, y2]
-                # x1, y1: Tọa độ góc trên bên trái
-                # x2, y2: Tọa độ góc dưới bên phải
                 bbox = box.xyxy[0].tolist()
                 
                 # Chỉnh định dạng dữ liệu trả về cho API /detections/live
                 detections.append({
-                    "type": label.upper(),
+                    "type": mapped_label.upper(),
                     "confidence": round(conf * 100, 2),
-                    "bbox": [int(coord) for coord in bbox], # Chuyển về số nguyên để dễ vẽ
+                    "bbox": [int(coord) for coord in bbox], 
                     "timestamp": time.time()
                 })
         
@@ -79,16 +93,4 @@ class VehicleDetector:
         
         return filename
 
-    def draw_on_frame(self, frame, detections):
-        """
-        Hàm hỗ trợ: Vẽ tất cả ô vuông lên frame để hiển thị trực tiếp (streaming)
-        """
-        for det in detections:
-            x1, y1, x2, y2 = det['bbox']
-            # Vẽ hình chữ nhật đỏ bao quanh xe
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 255), 3)
-            # Hiện nhãn xe và cảnh báo
-            label_str = f"ALERT: {det['type']} ({det['confidence']}%)"
-            cv2.putText(frame, label_str, (x1, y1 - 15), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-        return frame
+        return filename
