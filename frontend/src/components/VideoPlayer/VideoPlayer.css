@@ -1,0 +1,216 @@
+.player-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-surface);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--border-color);
+  position: relative;
+}
+
+.video-screen {
+  flex: 1;
+  position: relative;
+  background-color: #000;
+  display: flex;
+  /* Flex centers the "shrunk" video container */
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 12px;
+  /* Add padding so video doesn't touch edges */
+}
+
+/* Streaming/Video Element */
+.real-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background-color: black;
+}
+
+/* Canvas Overlay is used instead of DOM elements */
+
+.controls-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 24px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9), transparent);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.player-wrapper:hover .controls-overlay {
+  opacity: 1;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: white;
+}
+
+.icon-btn {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+.cam-name {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  font-family: monospace;
+}
+
+/* Footer */
+.player-footer {
+  background-color: var(--bg-surface);
+  padding: 16px 24px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.label {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.source-tag {
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.status-tag {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: var(--bg-main);
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+  transition: all 0.3s ease;
+}
+
+.status-tag.active {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success-green);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.footer-right {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-main);
+  border-color: var(--text-muted);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 4px 15px var(--primary-glow);
+}
+
+.btn-primary:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+}
+
+/* Placeholder */
+.placeholder-bg {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at center, #cbd5e1 0%, #94a3b8 100%);
+  color: white;
+}
+
+/* Custom Range Slider */
+.conf-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  /* Darker track for light footer */
+  border-radius: 2px;
+  outline: none;
+  transition: opacity 0.2s;
+}
+
+.conf-slider:hover {
+  opacity: 1;
+}
+
+.conf-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  box-shadow: 0 0 5px rgba(37, 99, 235, 0.3);
+  border: 2px solid white;
+  transition: transform 0.1s;
+}
+
+.conf-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}

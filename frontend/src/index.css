@@ -1,0 +1,69 @@
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
+
+:root {
+  /* Light Theme Palette */
+  --bg-main: #f8fafc;
+  /* Slate 50 - Very light gray/blue */
+  --bg-surface: #ffffff;
+  /* White */
+  --bg-glass: rgba(255, 255, 255, 0.7);
+  /* Glass effect base */
+
+  --primary: #2563eb;
+  /* Blue 600 - Slightly darker for contrast on white */
+  --primary-glow: rgba(37, 99, 235, 0.3);
+
+  --text-main: #0f172a;
+  /* Slate 900 - Dark text */
+  --text-muted: #64748b;
+  /* Slate 500 */
+
+  --border-color: #cbd5e1;
+  /* Slate 300 */
+
+  --emergency-red: #dc2626;
+  /* Red 600 */
+  --emergency-red-glow: rgba(220, 38, 38, 0.2);
+  --warning-orange: #d97706;
+  /* Amber 600 */
+  --success-green: #059669;
+  /* Emerald 600 */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Be Vietnam Pro", sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  height: 100vh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  /* Darker thumb for light theme */
+  border-radius: 10px;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  border: none;
+  transition: all 0.2s ease;
+}
