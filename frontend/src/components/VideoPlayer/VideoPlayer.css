@@ -14,11 +14,13 @@
   flex: 1;
   position: relative;
   background-color: #000;
-  min-height: 480px;
   display: flex;
+  /* Flex centers the "shrunk" video container */
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  padding: 12px;
+  /* Add padding so video doesn't touch edges */
 }
 
 /* Streaming/Video Element */
@@ -29,19 +31,7 @@
   background-color: black;
 }
 
-/* Bounding Box Styling - Sci-fi / Tech Look */
-.bounding-box {
-  position: absolute;
-  box-shadow: 0 0 10px rgba(0, 150, 255, 0.3);
-  pointer-events: none;
-  /* Let clicks pass through */
-  transition: all 0.1s linear;
-  /* Smooth movement */
-}
-
-/* Corner borders effect using pseudo elements? Or just simple border for now */
-/* Let's keep distinct borders based on type, styling is handled inline to switch colors, 
-   but we can add glow here */
+/* Canvas Overlay is used instead of DOM elements */
 
 .controls-overlay {
   position: absolute;

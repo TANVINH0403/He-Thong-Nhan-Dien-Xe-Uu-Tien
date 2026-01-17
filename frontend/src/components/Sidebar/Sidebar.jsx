@@ -1,192 +1,160 @@
 import React, { useState } from "react";
 import "./Sidebar.css";
-import Modal from "../Modal/Modal.jsx";
+import "./Sidebar.css";
 
-export default function Sidebar() {
-  const [activeTab, setActiveTab] = useState("list");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState(null);
+export default function Sidebar({ detections = [] }) {
+  // Get the latest detection (last item in the list)
+  const activeDetection = detections.length > 0 ? detections[detections.length - 1] : null;
 
-  const handleViewDetail = (id) => {
-    setSelectedId(id);
-    setModalOpen(true);
+  const getClassInfo = (cls) => {
+    if (!cls) return {};
+    const c = cls.toLowerCase();
+    if (c.includes("ambulance")) {
+      return {
+        label: "Xe Cứu Thương",
+        colorVar: "var(--emergency-red)",
+        bgSoft: "rgba(239, 68, 68, 0.1)",
+        icon: "local_hospital",
+        tag: "KHẨN CẤP"
+      };
+    } else if (c.includes("fire")) {
+      return {
+        label: "Xe Cứu Hỏa",
+        colorVar: "var(--warning-orange)",
+        bgSoft: "rgba(245, 158, 11, 0.1)",
+        icon: "fire_truck",
+        tag: "ƯU TIÊN"
+      };
+    } else if (c.includes("police")) {
+      return {
+        label: "Xe Cảnh Sát",
+        colorVar: "var(--primary)",
+        bgSoft: "rgba(59, 130, 246, 0.1)",
+        icon: "local_police",
+        tag: "CẢNH SÁT"
+      };
+    }
+    return {
+      label: "Xe Ưu Tiên",
+      colorVar: "var(--text-muted)",
+      bgSoft: "rgba(0,0,0,0.05)",
+      icon: "warning",
+      tag: "KHÁC"
+    };
   };
 
-  const closeModal = () => {
-    setModalOpen(false);
-    setTimeout(() => setSelectedId(null), 200);
-  };
-
-  // ... (rest of the file remains same until return) ...
+  const info = activeDetection ? getClassInfo(activeDetection.class) : {};
 
   return (
     <aside className="sidebar">
-      {/* Modal */}
-      <Modal
-        isOpen={modalOpen}
-        onClose={closeModal}
-        title="Chi tiết phương tiện"
-        type="info"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--primary)' }}>
-              info
-            </span>
-            <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>ID: {selectedId}</h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Phát hiện lúc: {new Date().toLocaleTimeString()}</p>
-            </div>
-          </div>
+      <div className="subheader" style={{ marginBottom: '16px' }}>
+        <span className="sub-text">THÔNG TIN NHẬN DIỆN</span>
+        <span className="live-tag">● LIVE</span>
+      </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Loại xe</p>
-              <p style={{ fontSize: '14px', fontWeight: 700 }}>
-                {selectedId?.includes("AMB") ? "Xe Cứu Thương" : selectedId?.includes("FIR") ? "Xe Cứu Hỏa" : "Xe Ưu Tiên"}
-              </p>
+      <div style={{ flex: 1, padding: '0 20px 20px 20px', display: 'flex', flexDirection: 'column' }}>
+        {activeDetection ? (
+          <div style={{
+            background: 'var(--bg-main)',
+            borderRadius: '16px',
+            padding: '24px',
+            border: `1px solid ${info.colorVar}`,
+            boxShadow: `0 10px 30px -10px ${info.bgSoft}`
+          }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px', paddingBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
+              <div style={{
+                width: '64px', height: '64px',
+                borderRadius: '16px',
+                background: info.bgSoft,
+                display: 'flex', alignItems: 'center', justifyContent: 'center'
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '32px', color: info.colorVar }}>
+                  {info.icon}
+                </span>
+              </div>
+              <div>
+                <span style={{
+                  background: info.colorVar, color: 'white',
+                  padding: '4px 12px', borderRadius: '100px',
+                  fontSize: '11px', fontWeight: 700
+                }}>{info.tag}</span>
+                <h2 style={{ margin: '8px 0 0 0', fontSize: '20px', color: 'var(--text-main)', fontWeight: 800 }}>
+                  {info.label}
+                </h2>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                  ID: {activeDetection.vehicle_id}
+                </p>
+              </div>
             </div>
-            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Độ tin cậy</p>
-              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--success-green)' }}>98.4%</p>
-            </div>
-            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Hướng di chuyển</p>
-              <p style={{ fontSize: '14px', fontWeight: 700 }}>Đang di chuyển</p>
-            </div>
-            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
-              <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Camera</p>
-              <p style={{ fontSize: '14px', fontWeight: 700 }}>CAM-01</p>
-            </div>
-          </div>
 
-          <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '8px', marginTop: '4px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-            <p style={{ fontSize: '12px', color: 'var(--emergency-red)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>warning</span>
-              Trạng thái khẩn cấp được xác nhận.
+            {/* Details Grid */}
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ background: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>ĐỘ TIN CẬY</p>
+                  <p style={{ fontSize: '24px', fontWeight: 800, color: info.colorVar }}>
+                    {(activeDetection.score * 100).toFixed(1)}%
+                  </p>
+                </div>
+                <div style={{ background: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>TRẠNG THÁI</p>
+                  <p style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-main)' }}>
+                    {activeDetection.direction || "Di chuyển"}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--bg-surface)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>THỜI GIAN PHÁT HIỆN</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--text-muted)' }}>schedule</span>
+                  <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-main)' }}>
+                    {activeDetection.time}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{
+                marginTop: '8px', padding: '16px', borderRadius: '12px',
+                background: info.bgSoft, border: `1px solid ${info.colorVar}30`,
+                display: 'flex', gap: '12px'
+              }}>
+                <span className="material-symbols-outlined" style={{ color: info.colorVar }}>warning</span>
+                <div>
+                  <p style={{ fontSize: '13px', fontWeight: 700, color: info.colorVar, marginBottom: '4px' }}>CẢNH BÁO TỰ ĐỘNG</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-main)', opacity: 0.8 }}>Hệ thống đã tự động ghi nhận và gửi thông báo đến trung tâm điều khiển.</p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          <div style={{
+            flex: 1, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            color: 'var(--text-muted)', opacity: 0.6
+          }}>
+            <div style={{ position: 'relative', width: '80px', height: '80px', marginBottom: '24px' }}>
+              <div style={{ position: 'absolute', inset: 0, border: '4px solid var(--border-color)', borderRadius: '50%' }}></div>
+              <div style={{ position: 'absolute', inset: 0, border: '4px solid var(--primary)', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 2s linear infinite' }}></div>
+              <span className="material-symbols-outlined" style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '32px' }}>radar</span>
+            </div>
+            <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>ĐANG QUÉT TÍN HIỆU...</h3>
+            <p style={{ fontSize: '13px', textAlign: 'center', maxWidth: '200px' }}>
+              Hệ thống đang giám sát camera thời gian thực để phát hiện xe ưu tiên.
             </p>
           </div>
-        </div>
-      </Modal>
-
-      <div className="tabs">
-        <button
-          className={`tab-btn ${activeTab === "list" ? "active" : ""}`}
-          onClick={() => setActiveTab("list")}
-        >
-          Danh sách nhận diện
-        </button>
-        <button
-          className={`tab-btn ${activeTab === "history" ? "active" : ""}`}
-          onClick={() => setActiveTab("history")}
-        >
-          Lịch sử
-        </button>
-        <button
-          className={`tab-btn ${activeTab === "alert" ? "active" : ""}`}
-          onClick={() => setActiveTab("alert")}
-        >
-          Cảnh báo
-        </button>
-      </div>
-
-      <div className="subheader">
-        <span className="sub-text">Phát hiện gần đây</span>
-        <span className="live-tag">● TRỰC TIẾP</span>
-      </div>
-
-      <div className="list">
-        {/* Nội dung thay đổi dựa theo Tab (Ở đây mình demo Tab Danh sách) */}
-        {activeTab === "list" && (
-          <>
-            {/* Item 1 */}
-            <div
-              className="item item-red"
-              onClick={() => handleViewDetail("#AMB-442")}
-            >
-              <div className="item-top">
-                <div className="item-icon red-bg-soft">
-                  <span className="material-symbols-outlined red-text">
-                    local_hospital
-                  </span>
-                </div>
-                <div className="item-content">
-                  <h4 className="item-title red-text">Xe Cứu Thương</h4>
-                  <p className="item-id">ID: #AMB-442</p>
-                </div>
-                <span className="time">10:24:12</span>
-              </div>
-              <div className="item-bot">
-                <span className="tag red-bg">KHẨN CẤP</span>
-                <span className="conf">98.4%</span>
-                <button
-                  className="link red-text"
-                  onClick={(e) => {
-                    e.stopPropagation(); // Ngăn click lan ra ngoài
-                    handleViewDetail("#AMB-442");
-                  }}
-                >
-                  CHI TIẾT
-                </button>
-              </div>
-            </div>
-
-            {/* Item 2 */}
-            <div
-              className="item item-orange"
-              onClick={() => handleViewDetail("#FIR-901")}
-            >
-              <div className="item-top">
-                <div className="item-icon orange-bg-soft">
-                  <span className="material-symbols-outlined orange-text">
-                    fire_truck
-                  </span>
-                </div>
-                <div className="item-content">
-                  <h4 className="item-title orange-text">Xe Cứu Hỏa</h4>
-                  <p className="item-id">ID: #FIR-901</p>
-                </div>
-                <span className="time">10:22:58</span>
-              </div>
-              <div className="item-bot">
-                <span className="tag orange-bg">ƯU TIÊN</span>
-                <span className="conf">92.1%</span>
-                <button
-                  className="link orange-text"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleViewDetail("#FIR-901");
-                  }}
-                >
-                  CHI TIẾT
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Nội dung giả cho các tab khác */}
-        {activeTab === "history" && (
-          <div style={{ padding: 20, textAlign: "center", color: "#64748b" }}>
-            Chưa có lịch sử nào.
-          </div>
-        )}
-        {activeTab === "alert" && (
-          <div style={{ padding: 20, textAlign: "center", color: "#ef4444" }}>
-            Không có cảnh báo mới.
-          </div>
         )}
       </div>
 
-      <div className="sidebar-footer">
-        <div className="disk-head">
-          <span>Dung lượng ổ đĩa</span>
-          <span className="disk-val">4.2 TB / 10 TB</span>
-        </div>
-        <div className="disk-track">
-          <div className="disk-fill"></div>
-        </div>
-      </div>
+      {/* Add spin animation locally for now */}
+      <style>{`
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
+      `}</style>
     </aside>
   );
 }

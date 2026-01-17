@@ -39,6 +39,84 @@ export default function VideoPlayer(props) {
     };
   }, [videoUrl]);
 
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const video = videoRef.current;
+    if (!canvas || !video || !boundingBoxes.length) {
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      return;
+    }
+
+    // Match canvas size to video resolution
+    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+    }
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    boundingBoxes.forEach(box => {
+      if ((box.score * 100) < confidenceThreshold) return;
+
+      const [x1, y1, x2, y2] = box.bbox;
+      const width = x2 - x1;
+      const height = y2 - y1;
+
+      // Color Logic
+      let color = "#00ff00"; // Green for normal
+      let label = "NORMAL";
+      let bgColor = "rgba(0, 255, 0, 0.2)";
+
+      if (box.class.includes("ambulance")) {
+        color = "#ef4444"; // Red
+        label = "AMBULANCE";
+        bgColor = "rgba(239, 68, 68, 0.2)";
+      } else if (box.class.includes("fire")) {
+        color = "#f97316"; // Orange
+        label = "FIRE TRUCK";
+        bgColor = "rgba(249, 115, 22, 0.2)";
+      } else if (box.class.includes("police")) {
+        color = "#3b82f6"; // Blue
+        label = "POLICE";
+        bgColor = "rgba(59, 130, 246, 0.2)";
+      } else if (box.class.includes("normal")) {
+        color = "#10b981"; // Emerald Green
+        label = "NORMAL VEHICLE";
+        bgColor = "rgba(16, 185, 129, 0.2)";
+      }
+
+      // Draw Box
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(x1, y1, width, height);
+
+      // Draw Fill (optional, semi-transparent)
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(x1, y1, width, height);
+
+      // Draw Label Background
+      ctx.font = "bold 14px Inter, sans-serif";
+      const text = `${label} ${(box.score * 100).toFixed(0)}%`;
+      const textMetrics = ctx.measureText(text);
+      const textHeight = 14;
+      const textPadding = 6;
+
+      ctx.fillStyle = color; // Label bg same as box color
+      ctx.fillRect(x1, y1 - 24, textMetrics.width + (textPadding * 2), 24);
+
+      // Draw Text
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(text, x1 + textPadding, y1 - 7);
+    });
+
+  }, [boundingBoxes, confidenceThreshold]);
+
   // 1. Upload File
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
@@ -194,6 +272,26 @@ export default function VideoPlayer(props) {
     };
   }
 
+  // State for video dimensions
+  const [videoSize, setVideoSize] = useState({ width: '100%', height: '100%', aspectRatio: 'auto' });
+
+  const handleLoadedMetadata = () => {
+    const video = videoRef.current;
+    if (video) {
+      setVideoSize({
+        width: '100%',
+        height: 'auto',
+        aspectRatio: `${video.videoWidth} / ${video.videoHeight}`
+      });
+
+      // Also update canvas immediately
+      if (canvasRef.current) {
+        canvasRef.current.width = video.videoWidth;
+        canvasRef.current.height = video.videoHeight;
+      }
+    }
+  };
+
   return (
     <div className="player-wrapper">
       {/* Alert Modal */}
@@ -211,84 +309,34 @@ export default function VideoPlayer(props) {
         />
 
         {videoUrl ? (
-          <div style={{ position: "relative", width: "100%", height: "100%" }}>
+          <div style={{ position: "relative", width: "100%", maxWidth: "100%", height: "100%", display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <video
               ref={videoRef}
               src={videoUrl}
               className="real-video"
               onEnded={handleVideoEnded}
+              onLoadedMetadata={handleLoadedMetadata}
               playsInline
               muted
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
             />
-            {/* OVERLAY */}
-            {boundingBoxes
-              .filter(box => (box.score * 100) >= confidenceThreshold)
-              .map((box, idx) => {
-                const [x1, y1, x2, y2] = box.bbox;
-                // Coordinates from backend are absolute (e.g. 1280x720).
-                // We need to scale to video element size.
-                // Simply using % if backend assumes specific resize? 
-                // Backend detector runs on original frame size usually, or resized.
-                // backend/app/api/sse.py -> capture(original).
-                // backend/config/settings.py had FRAME_WIDTH=960. 
-                // But sse.py uses cv2.VideoCapture(file), reads frame, detects.
-                // YOLOv8 handles resize internally but returns coords relative to input image.
-                // So if sse.py passed full frame, bbox is relative to full frame resolution.
-                // The HTML video element fits content. 
-                // This is tricky: "absolute" bbox vs "responsive" video.
-                // Best way: calculate %: (x / originalWidth) * 100.
-                // But we don't know originalWidth here easily without video metadata.
-                // HACK: Assume backend logic or simply normalize on backend. 
-                // But for now, let's assume 1280x720 or 960x540?
-                // Detector in `detector.py` uses `self.model(frame)`.
-                // `sse.py` reads frame. `cap.get(cv2.CAP_PROP_FRAME_WIDTH)`.
-                // Ideally send frame size in SSE init or with each frame.
-                // Or simpler: CSS `viewBox`? No.
-                // Let's assume standard HD (1280x720) or FHD (1920x1080) OR use a known aspect ratio.
-                // Better approach for Frontend Overlay: 
-                // We can't easily normalize without width/height.
-                // Let's try 960x540 (from previous settings.py) OR 1280x720. 
-                // I'll stick to % logic assuming 1280x720 for now OR pass 100% if we assume backend resize.
-                // Wait, `sse.py` does NOT resize. It uses original video.
-                // If I upload 1920x1080, boxes are 0..1920.
-                // If I display video at 640x360, box x=1000 will be off-screen if I assume px.
-                // So percentage IS required.
-                // Video element has `videoWidth` and `videoHeight`.
-                // I can get them from `videoRef.current.videoWidth`.
-                const vidParams = videoRef.current ? { w: videoRef.current.videoWidth, h: videoRef.current.videoHeight } : { w: 1280, h: 720 };
-                const W = vidParams.w || 1280;
-                const H = vidParams.h || 720;
+            {/* CANVAS OVERLAY */}
+            <canvas
+              ref={canvasRef}
+              className="overlay-canvas"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                pointerEvents: 'none',
+                zIndex: 10,
+                objectFit: 'contain'
+              }}
+            />
 
-                const left = (x1 / W) * 100 + "%";
-                const top = (y1 / H) * 100 + "%";
-                const width = ((x2 - x1) / W) * 100 + "%";
-                const height = ((y2 - y1) / H) * 100 + "%";
 
-                const isPriority = ["ambulance", "fire", "police"].some(k => box.class.includes(k));
-                const color = box.class.includes("fire") ? "orange" : box.class.includes("police") ? "blue" : "red";
-
-                return (
-                  <div key={idx} className="bounding-box" style={{
-                    left, top, width, height,
-                    position: "absolute",
-                    border: `2px solid ${isPriority ? color : '#00ff00'}`,
-                    zIndex: 10
-                  }}>
-                    <span style={{
-                      background: isPriority ? color : '#00ff00',
-                      color: 'white',
-                      fontSize: '10px',
-                      position: 'absolute',
-                      top: '-16px',
-                      left: '-2px',
-                      padding: '0 4px',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      {box.class.toUpperCase()} {(box.score * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                );
-              })}
           </div>
         ) : (
           <div className="placeholder-bg">

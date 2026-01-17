@@ -51,9 +51,8 @@ class VehicleDetector:
                 mapped_label = "fire truck"
             elif raw_label == "motorcycle": # Use motorcycle for police to vary it
                 mapped_label = "police car"
-            elif raw_label == "car" and conf > 0.7: # Simulate some cars as police if high confidence
-                 # Just for demo variety, maybe skip cars to avoid noise or map specific ones
-                 pass 
+            elif raw_label == "car":
+                mapped_label = "normal vehicle"
 
             if mapped_label and conf >= self.confidence_threshold:
                 # Lấy tọa độ ô vuông (Bounding Box) [x1, y1, x2, y2]
