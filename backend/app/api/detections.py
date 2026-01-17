@@ -1,22 +1,27 @@
 import os
 import cv2
 import shutil
-from fastapi import APIRouter, UploadFile, File, Depends
+import asyncio
+from fastapi import APIRouter, UploadFile, File, Depends, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from concurrent.futures import ThreadPoolExecutor
 
-from app.db.database import get_db
+from app.db.database import get_db, SessionLocal
 from app.db import models
 from app.core.detector import VehicleDetector
 
 router = APIRouter(prefix="/detections", tags=["Detections"])
 
-# Khởi tạo detector
+# Khởi tạo detector và bộ thực thi luồng riêng cho DB
 detector = VehicleDetector(model_path="models/yolov8n.pt")
+executor = ThreadPoolExecutor(max_workers=4) 
 UPLOAD_DIR = "static/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 current_video_path = None
+# Dictionary để quản lý trạng thái stream: {video_path: is_active (bool)}
+active_streams = {}
 
 @router.post("/upload")
 async def upload_video(file: UploadFile = File(...)):
@@ -27,36 +32,44 @@ async def upload_video(file: UploadFile = File(...)):
     current_video_path = file_path
     return {"filename": file.filename, "status": "Uploaded"}
 
-def generate_frames(video_path, db: Session):
-    cap = cv2.VideoCapture(video_path)
-    while cap.isOpened():
-        success, frame = cap.read()
-        if not success: break
-        
-        # Nhận diện
-        results = detector.process_frame(frame)
-        
-        # Lưu vào DB nếu phát hiện xe ưu tiên
-        for det in results:
-            image_name = detector.save_snapshot(frame, det)
-            new_log = models.PriorityVehicleLog(
-                vehicle_type=det['type'],
-                confidence=det['confidence'],
-                image_path=image_name,
-                bbox=str(det['bbox'])
-            )
-            db.add(new_log)
-            db.commit()
-
-        # Vẽ lên frame và stream
-        frame = detector.draw_on_frame(frame, results)
-        _, buffer = cv2.imencode('.jpg', frame)
-        yield (b'--frame\r\n'
-               b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
-    cap.release()
-
-@router.get("/stream/{video_name}")
-def video_stream(video_name: str, db: Session = Depends(get_db)):
+@router.post("/stop")
+def stop_stream(video_name: str):
+    """Endpoint để dừng stream của một video cụ thể"""
     video_path = os.path.join(UPLOAD_DIR, video_name)
-    return StreamingResponse(generate_frames(video_path, db), 
-                             media_type="multipart/x-mixed-replace; boundary=frame")
+    if video_path in active_streams:
+        active_streams[video_path] = False # Set flag to False to break loop
+        return {"status": "Stopped", "video": video_name}
+    return {"status": "Not found or already stopped", "video": video_name}
+
+import time
+
+# Dictionary to track last snapshot time per vehicle type
+# Key: vehicle_type (str), Value: timestamp (float)
+last_snapshot_time = {}
+
+def save_to_db(db_session_factory, det, frame):
+    """Hàm phụ để lưu DB trong luồng riêng, không làm nghẽn stream"""
+    
+    # THROTTLING: Chỉ lưu 1 ảnh mỗi 2 giây cho cùng 1 loại xe
+    current_time = time.time()
+    vehicle_type = det['type']
+    if current_time - last_snapshot_time.get(vehicle_type, 0) < 2.0:
+        return # Skip saving if too frequent
+    
+    last_snapshot_time[vehicle_type] = current_time
+
+    db = db_session_factory()
+    try:
+        image_name = detector.save_snapshot(frame, det)
+        new_log = models.PriorityVehicleLog(
+            vehicle_type=det['type'],
+            confidence=det['confidence'],
+            image_path=image_name,
+            bbox=str(det['bbox'])
+        )
+        db.add(new_log)
+        db.commit()
+    except Exception as e:
+        print(f"DB Error: {e}")
+    finally:
+        db.close()

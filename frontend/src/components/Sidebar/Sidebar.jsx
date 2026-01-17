@@ -1,61 +1,74 @@
 import React, { useState } from "react";
 import "./Sidebar.css";
+import Modal from "../Modal/Modal.jsx";
 
 export default function Sidebar() {
-  // 1. Tạo state để lưu tab đang chọn
-  const [activeTab, setActiveTab] = useState("list"); // 'list', 'history', 'alert'
+  const [activeTab, setActiveTab] = useState("list");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState(null);
 
-  // Hàm xử lý khi click nút "Chi tiết"
   const handleViewDetail = (id) => {
-    alert(`Đang mở thông tin chi tiết cho xe ID: ${id}`);
+    setSelectedId(id);
+    setModalOpen(true);
   };
 
-  const getClassInfo = (cls) => {
-    const c = cls.toLowerCase();
-    if (c.includes("ambulance")) {
-      return {
-        label: "Xe Cứu Thương",
-        colorClass: "item-red",
-        bgSoft: "red-bg-soft",
-        textClass: "red-text",
-        bgTag: "red-bg",
-        icon: "local_hospital",
-        tag: "KHẨN CẤP"
-      };
-    } else if (c.includes("fire")) {
-      return {
-        label: "Xe Cứu Hỏa",
-        colorClass: "item-orange",
-        bgSoft: "orange-bg-soft",
-        textClass: "orange-text",
-        bgTag: "orange-bg",
-        icon: "fire_truck",
-        tag: "ƯU TIÊN"
-      };
-    } else if (c.includes("police")) {
-      return {
-        label: "Xe Cảnh Sát",
-        colorClass: "item-blue", // Cần thêm class blue trong css nếu chưa có, tạm thời dùng default style
-        bgSoft: "blue-bg-soft",
-        textClass: "blue-text",
-        bgTag: "blue-bg",
-        icon: "local_police",
-        tag: "CẢNH SÁT"
-      };
-    }
-    return {
-      label: "Xe Ưu Tiên",
-      colorClass: "item-gray",
-      bgSoft: "gray-bg-soft",
-      textClass: "gray-text",
-      bgTag: "gray-bg",
-      icon: "warning",
-      tag: "KHÁC"
-    };
+  const closeModal = () => {
+    setModalOpen(false);
+    setTimeout(() => setSelectedId(null), 200);
   };
+
+  // ... (rest of the file remains same until return) ...
 
   return (
     <aside className="sidebar">
+      {/* Modal */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={closeModal}
+        title="Chi tiết phương tiện"
+        type="info"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '12px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--primary)' }}>
+              info
+            </span>
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>ID: {selectedId}</h3>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>Phát hiện lúc: {new Date().toLocaleTimeString()}</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Loại xe</p>
+              <p style={{ fontSize: '14px', fontWeight: 700 }}>
+                {selectedId?.includes("AMB") ? "Xe Cứu Thương" : selectedId?.includes("FIR") ? "Xe Cứu Hỏa" : "Xe Ưu Tiên"}
+              </p>
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Độ tin cậy</p>
+              <p style={{ fontSize: '14px', fontWeight: 700, color: 'var(--success-green)' }}>98.4%</p>
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Hướng di chuyển</p>
+              <p style={{ fontSize: '14px', fontWeight: 700 }}>Đang di chuyển</p>
+            </div>
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '12px', borderRadius: '8px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Camera</p>
+              <p style={{ fontSize: '14px', fontWeight: 700 }}>CAM-01</p>
+            </div>
+          </div>
+
+          <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: '8px', marginTop: '4px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+            <p style={{ fontSize: '12px', color: 'var(--emergency-red)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>warning</span>
+              Trạng thái khẩn cấp được xác nhận.
+            </p>
+          </div>
+        </div>
+      </Modal>
+
       <div className="tabs">
         <button
           className={`tab-btn ${activeTab === "list" ? "active" : ""}`}

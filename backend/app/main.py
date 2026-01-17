@@ -10,7 +10,7 @@ torch.serialization.add_safe_globals([DetectionModel, torch.nn.modules.container
 orig_load = torch.load
 torch.load = lambda *args, **kwargs: orig_load(*args, **kwargs, weights_only=False)
 
-from app.api import detections, analytics
+from app.api import detections, analytics, sse
 from app.db import models
 from app.db.database import engine
 
@@ -22,17 +22,18 @@ app = FastAPI(title="Vehicle Priority System")
 # Cho phép Frontend truy cập (CORS)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], # Hoặc địa chỉ cụ thể của React (http://localhost:3000)
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # Cấu hình Static Files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Kết nối Router
 app.include_router(detections.router)
 app.include_router(analytics.router)
+app.include_router(sse.router)
 
 @app.get("/")
 def home():
