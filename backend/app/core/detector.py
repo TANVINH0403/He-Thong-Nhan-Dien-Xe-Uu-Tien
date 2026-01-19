@@ -1,95 +1,76 @@
 import cv2
 import os
 import time
-from ultralytics import YOLO
+from ultralytics import YOLO  
 
 class VehicleDetector:
-    def __init__(self, model_path="models/yolov8n.pt"):
-        """
-        Khởi tạo Detector
-        :param model_path: Đường dẫn tới file model .pt trong thư mục models/
-        """
-        # 1. Nạp model AI
-        if not os.path.exists(model_path):
-            print(f"Cảnh báo: Không tìm thấy file {model_path}. Hệ thống sẽ tự tải bản mặc định.")
-        self.model = YOLO(model_path)
-
-        # 2. Định nghĩa các loại xe ưu tiên cần bắt (tùy vào model bạn dùng)
-        # Với YOLOv8 mặc định, 'ambulance' và 'fire truck' thường không có sẵn, 
-        # bạn có thể cần train thêm hoặc dùng model chuyên dụng.
-        # Ở đây tôi liệt kê các nhãn phổ biến để bạn dễ hình dung.
-        self.priority_labels = ["ambulance", "fire truck", "police car"]
+    def __init__(self):
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        model_path = os.path.join(current_dir, "models", "best.pt")
         
-        # Ngưỡng tin cậy (Chỉ bắt xe khi chắc chắn trên 50%)
-        self.confidence_threshold = 0.5
+        # Dòng 'if' phải thẳng hàng với 'model_path' ở trên
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f" Không tìm thấy file model tại: {model_path}")
+            
+        # 2. Khởi tạo model YOLOv8 từ file local
+        self.model = YOLO(model_path)
+        print("Đã khởi tạo YOLOv8 Local thành công")
 
     def process_frame(self, frame):
-        """
-        Hàm chính: Nhận khung hình từ video và trả về dữ liệu xe ưu tiên
-        """
-        # Chạy AI nhận diện
-        results = self.model(frame)[0]
+        # 3. Chạy nhận diện trực tiếp trên frame (Local)
+        # conf=0.5: Chỉ lấy những xe AI chắc chắn trên 50%
+        # imgsz=640: Giữ chất lượng ảnh cao để video rõ nét
+        results = self.model(frame, conf=0.5, imgsz=640, verbose=False)[0]
         
         detections = []
         
-        # Mapping simulation for standard YOLOv8n model
-        # bus -> ambulance
-        # truck -> fire truck
-        # car -> police car (simulated)
-        
+        # 4. Duyệt qua kết quả trả về từ YOLO
         for box in results.boxes:
-            # Lấy thông tin cơ bản
-            cls_id = int(box.cls[0])
-            raw_label = self.model.names[cls_id].lower()
-            conf = float(box.conf[0])
+            # Lấy tọa độ dạng [x1, y1, x2, y2]
+            coords = box.xyxy[0].tolist()
+            x1, y1, x2, y2 = coords
+            
+            # Tính toán w, h để khớp với cấu trúc code cũ của bạn
+            w = int(x2 - x1)
+            h = int(y2 - y1)
+            x = int(x1)
+            y = int(y1)
 
-            # Simulation Logic
-            mapped_label = None
-            if raw_label == "bus":
-                mapped_label = "ambulance"
-            elif raw_label == "truck":
-                mapped_label = "fire truck"
-            elif raw_label == "motorcycle": # Use motorcycle for police to vary it
-                mapped_label = "police car"
-            elif raw_label == "car":
-                mapped_label = "normal vehicle"
-
-            if mapped_label and conf >= self.confidence_threshold:
-                # Lấy tọa độ ô vuông (Bounding Box) [x1, y1, x2, y2]
-                bbox = box.xyxy[0].tolist()
-                
-                # Chỉnh định dạng dữ liệu trả về cho API /detections/live
-                detections.append({
-                    "type": mapped_label.upper(),
-                    "confidence": round(conf * 100, 2),
-                    "bbox": [int(coord) for coord in bbox], 
-                    "timestamp": time.time()
-                })
-        
+            conf = float(box.conf[0] * 100)
+            
+            # Vì bạn đã gộp nhãn, nên class sẽ là "Xe uu tien"
+            detections.append({
+                "class": "xe uu tien", 
+                "confidence": conf,
+                "bbox": [x, y, w, h] 
+            })
+            
         return detections
 
     def save_snapshot(self, frame, detection, folder="static/snapshots"):
         """
-        Chụp ảnh xe ưu tiên và lưu vào thư mục static để làm nhật ký (analytics/logs)
+        Lưu ảnh bằng chứng khi phát hiện xe ưu tiên (Giữ nguyên logic cũ)
         """
         if not os.path.exists(folder):
             os.makedirs(folder)
 
-        # Tạo tên file độc nhất: loại_xe_thời_gian.jpg
         timestamp = time.strftime("%Y%m%d-%H%M%S")
-        filename = f"{detection['type']}_{timestamp}.jpg"
+        label = detection['class'].replace(" ", "_") # Thay dấu cách bằng gạch dưới cho tên file
+        filename = f"{label}_{timestamp}.jpg"
         filepath = os.path.join(folder, filename)
 
-        # Vẽ ô vuông lên ảnh trước khi lưu (để làm bằng chứng trực quan)
-        x1, y1, x2, y2 = detection['bbox']
+        # Lấy tọa độ để vẽ
+        x, y, w, h = detection['bbox']
         snapshot_frame = frame.copy()
-        cv2.rectangle(snapshot_frame, (x1, y1), (x2, y2), (0, 0, 255), 2) # Vẽ khung đỏ
-        cv2.putText(snapshot_frame, f"{detection['type']} {detection['confidence']}%", 
-                    (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-
-        # Lưu file
-        cv2.imwrite(filepath, snapshot_frame)
         
-        return filename
+        # Vẽ ô vuông màu đỏ (0, 0, 255)
+        cv2.rectangle(snapshot_frame, (x, y), (x + w, y + h), (0, 0, 255), 3) 
+        
+        # Ghi chữ lên ảnh
+        text = f"{label.upper()} {int(detection['confidence'])}%"
+        cv2.putText(snapshot_frame, text, (x, y - 10), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
 
+        cv2.imwrite(filepath, snapshot_frame)
+        print(f"📸 Đã lưu bằng chứng Local: {filepath}")
         return filename

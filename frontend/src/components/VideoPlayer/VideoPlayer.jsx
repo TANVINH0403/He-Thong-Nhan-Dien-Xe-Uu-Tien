@@ -41,80 +41,77 @@ export default function VideoPlayer(props) {
 
   const canvasRef = useRef(null);
 
+  // Render Loop for Canvas
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const video = videoRef.current;
-    if (!canvas || !video || !boundingBoxes.length) {
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-      return;
-    }
+    let animationFrameId;
 
-    // Match canvas size to video resolution
-    if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-    }
+    const render = () => {
+      const canvas = canvasRef.current;
+      const video = videoRef.current;
+      if (!canvas || !video) return;
 
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    boundingBoxes.forEach(box => {
-      if ((box.score * 100) < confidenceThreshold) return;
-
-      const [x1, y1, x2, y2] = box.bbox;
-      const width = x2 - x1;
-      const height = y2 - y1;
-
-      // Color Logic
-      let color = "#00ff00"; // Green for normal
-      let label = "NORMAL";
-      let bgColor = "rgba(0, 255, 0, 0.2)";
-
-      if (box.class.includes("ambulance")) {
-        color = "#ef4444"; // Red
-        label = "AMBULANCE";
-        bgColor = "rgba(239, 68, 68, 0.2)";
-      } else if (box.class.includes("fire")) {
-        color = "#f97316"; // Orange
-        label = "FIRE TRUCK";
-        bgColor = "rgba(249, 115, 22, 0.2)";
-      } else if (box.class.includes("police")) {
-        color = "#3b82f6"; // Blue
-        label = "POLICE";
-        bgColor = "rgba(59, 130, 246, 0.2)";
-      } else if (box.class.includes("normal")) {
-        color = "#10b981"; // Emerald Green
-        label = "NORMAL VEHICLE";
-        bgColor = "rgba(16, 185, 129, 0.2)";
+      const ctx = canvas.getContext('2d');
+      // Sync canvas size to display size if needed
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
       }
 
-      // Draw Box
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 3;
-      ctx.strokeRect(x1, y1, width, height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw Fill (optional, semi-transparent)
-      ctx.fillStyle = bgColor;
-      ctx.fillRect(x1, y1, width, height);
+      if (boundingBoxes.length > 0) {
+        boundingBoxes.forEach(box => {
+          if ((box.score * 100) < confidenceThreshold) return;
 
-      // Draw Label Background
-      ctx.font = "bold 14px Inter, sans-serif";
-      const text = `${label} ${(box.score * 100).toFixed(0)}%`;
-      const textMetrics = ctx.measureText(text);
-      const textHeight = 14;
-      const textPadding = 6;
+          const [x, y, w, h] = box.bbox;
 
-      ctx.fillStyle = color; // Label bg same as box color
-      ctx.fillRect(x1, y1 - 24, textMetrics.width + (textPadding * 2), 24);
+          // Color Logic
+          let color = "#00ff00"; // Green for normal
+          let label = "PHƯƠNG TIỆN";
+          let bgColor = "rgba(0, 255, 0, 0.2)";
 
-      // Draw Text
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(text, x1 + textPadding, y1 - 7);
-    });
+          if (box.class.includes("ambulance")) {
+            color = "#ef4444"; // Red
+            label = "XE CỨU THƯƠNG";
+            bgColor = "rgba(239, 68, 68, 0.2)";
+          } else if (box.class.includes("fire")) {
+            color = "#f97316"; // Orange
+            label = "XE CỨU HỎA";
+            bgColor = "rgba(249, 115, 22, 0.2)";
+          } else if (box.class.includes("police")) {
+            color = "#3b82f6"; // Blue
+            label = "XE CẢNH SÁT";
+            bgColor = "rgba(59, 130, 246, 0.2)";
+          }
 
+          // Draw Box
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 4; // Bold line for better visibility
+          ctx.strokeRect(x, y, w, h);
+
+          // Draw Fill
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(x, y, w, h);
+
+          // Draw Label
+          ctx.font = "bold 16px Inter, sans-serif";
+          const text = `${label} ${(box.score * 100).toFixed(0)}%`;
+          const textMetrics = ctx.measureText(text);
+          const textPadding = 8;
+
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y - 30, textMetrics.width + (textPadding * 2), 30);
+
+          ctx.fillStyle = "#ffffff";
+          ctx.fillText(text, x + textPadding, y - 9);
+        });
+      }
+
+      animationFrameId = requestAnimationFrame(render);
+    };
+
+    render();
+    return () => cancelAnimationFrame(animationFrameId);
   }, [boundingBoxes, confidenceThreshold]);
 
   // 1. Upload File
@@ -141,7 +138,7 @@ export default function VideoPlayer(props) {
           method: "POST",
           body: formData,
         });
-        if (!response.ok) throw new Error("Upload failed");
+        if (!response.ok) throw new Error("Tải lên thất bại");
 
         // Upload success
         setStatus("Sẵn sàng. Nhấn Bắt đầu.");
@@ -168,7 +165,7 @@ export default function VideoPlayer(props) {
       setIsPlaying(true);
       if (videoRef.current) videoRef.current.play();
       connectSSE(videoSource);
-      setStatus("Đang xử lý Real-time...");
+      setStatus("Đang xử lý trực tiếp...");
     }
   };
 
@@ -193,7 +190,7 @@ export default function VideoPlayer(props) {
     eventSourceRef.current = sse;
 
     sse.onopen = () => {
-      console.log("SSE Connected");
+      console.log("Đã kết nối SSE");
       lastFrameTimeRef.current = performance.now();
     };
 
@@ -216,35 +213,35 @@ export default function VideoPlayer(props) {
         }
 
         // --- Bounding Boxes ---
-        if (data.detections) {
+        if (data.detections && Array.isArray(data.detections)) {
           // Map backend (yolo) -> frontend
           const mapped = data.detections.map(d => ({
             ...d,
-            class: d.type.toLowerCase(),
-            score: d.confidence / 100.0
+            class: (d.class || "không xác định").toLowerCase(),
+            score: (d.confidence || 0) / 100.0
           }));
           setBoundingBoxes(mapped);
 
           // --- Notify New Detections ---
           mapped.forEach(veh => {
             const cls = veh.class;
-            // Simple hash for ID-less detection to avoid spam
-            // e.g. "ambulance-300-200"
-            const cx = Math.floor((veh.bbox[0] + veh.bbox[2]) / 2 / 50);
-            const cy = Math.floor((veh.bbox[1] + veh.bbox[3]) / 2 / 50);
+            const [x, y, w, h] = veh.bbox;
+
+            // Simple hash based on center to avoid spam
+            const cx = Math.floor((x + w / 2) / 50);
+            const cy = Math.floor((y + h / 2) / 50);
             const id = `${cls}-${cx}-${cy}`;
 
             const isPriority = ["ambulance", "police", "fire"].some(k => cls.includes(k));
 
             if (isPriority && !seenVehiclesRef.current.has(id)) {
               seenVehiclesRef.current.add(id);
-              // Auto forget after 5s so it can alert again if it comes back
               setTimeout(() => seenVehiclesRef.current.delete(id), 5000);
 
               if (props.onNewDetection) {
                 props.onNewDetection({
                   id: id,
-                  vehicle_id: id, // missing real ID
+                  vehicle_id: "Không có ID",
                   class: cls,
                   score: veh.score,
                   direction: "Đang di chuyển",
@@ -253,10 +250,12 @@ export default function VideoPlayer(props) {
               }
             }
           });
+        } else {
+          setBoundingBoxes([]); // Reset if nothing
         }
 
       } catch (e) {
-        console.error("SSE parse error", e);
+        console.error("Lỗi phân tích dữ liệu SSE", e);
       }
     });
 
@@ -266,7 +265,7 @@ export default function VideoPlayer(props) {
     });
 
     sse.onerror = (err) => {
-      console.error("SSE Error", err);
+      console.error("Lỗi kết nối SSE", err);
       // Browser auto-reconnects usually. 
       // If critical: handleStop(); setStatus("Mất kết nối server");
     };
@@ -357,13 +356,17 @@ export default function VideoPlayer(props) {
       </div>
 
       <div className="player-footer">
-        <div className="footer-left">
-          <span className="label">Trạng thái: </span>
-          <span className="source-tag">{status}</span>
+        <div className="footer-left" style={{ flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span className="label">Trạng thái: </span>
+              <span className="source-tag">{status}</span>
+            </div>
+          </div>
 
           {/* Slider Moved Here for Visibility */}
-          <div className="slider-control" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '24px' }}>
-            <span className="label" style={{ fontSize: '11px' }}>CONFIDENCE: {confidenceThreshold}%</span>
+          <div className="slider-control" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: '32px', background: 'var(--bg-base)', padding: '8px 16px', borderRadius: '12px', border: '1px solid var(--border-subtle)' }}>
+            <span className="label" style={{ fontSize: '10px' }}>ĐỘ TIN CẬY: {confidenceThreshold}%</span>
             <input
               type="range"
               min="0"
@@ -371,7 +374,6 @@ export default function VideoPlayer(props) {
               value={confidenceThreshold}
               onChange={(e) => setConfidenceThreshold(Number(e.target.value))}
               className="conf-slider"
-              style={{ width: '80px', cursor: 'pointer', height: '4px' }}
             />
           </div>
         </div>

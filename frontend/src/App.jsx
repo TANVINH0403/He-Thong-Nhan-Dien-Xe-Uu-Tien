@@ -60,31 +60,24 @@ function App() {
             <div className="content-area">
               <div className="stats-grid">
                 <StatsCard
-                  title="Tốc độ xử lý"
-                  value={`${stats.fps} FPS`}
-                  subValue={stats.fps > 20 ? "Ổn định" : "Thấp"}
+                  title="TỐC ĐỘ"
+                  value={stats.fps}
                   subColor={stats.fps > 20 ? "green" : "red"}
                 />
                 <StatsCard
-                  title="Xe ưu tiên hôm nay"
+                  title="ƯU TIÊN"
                   value={stats.priorityCount}
-                  subValue="Cảnh báo"
                   subColor="red"
-                  icon="priority_high"
                 />
                 <StatsCard
-                  title="Độ trễ xử lý"
+                  title="ĐỘ TRỄ"
                   value={`${stats.latency}ms`}
-                  subValue={stats.latency < 100 ? "Tốt" : "Cao"}
                   subColor={stats.latency < 100 ? "green" : "orange"}
-                  icon="timer"
                 />
                 <StatsCard
-                  title="Camera hoạt động"
+                  title="HOẠT ĐỘNG"
                   value={`${stats.activeCameras}/1`}
-                  icon="videocam"
                   subColor="green"
-                  subValue="Online"
                 />
               </div>
               <VideoPlayer
