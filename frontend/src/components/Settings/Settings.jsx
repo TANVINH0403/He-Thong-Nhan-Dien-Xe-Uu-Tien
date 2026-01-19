@@ -31,7 +31,7 @@ export default function Settings() {
         <h3 className="card-header">Tham số AI (Trí tuệ nhân tạo)</h3>
         <div className="form-group">
           <div className="range-label">
-            <label>Ngưỡng độ tin cậy (Confidence Threshold)</label>
+            <label>Ngưỡng độ tin cậy</label>
             <span>{aiThreshold}%</span>
           </div>
           <input

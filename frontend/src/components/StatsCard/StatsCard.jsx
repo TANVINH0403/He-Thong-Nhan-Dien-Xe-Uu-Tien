@@ -10,21 +10,15 @@ export default function StatsCard({ title, value, subValue, subColor, icon }) {
 
   return (
     <div className="stats-card">
-      <span className="stats-label">{title}</span>
-      <div className="stats-body">
+      <div className="stats-body" style={{ flexDirection: 'column', gap: '4px' }}>
         <span className="stats-value">{value}</span>
-        {icon ? (
-          <span
-            className="material-symbols-outlined"
-            style={{ color: getColor(subColor) }}
-          >
-            {icon}
-          </span>
-        ) : (
-          <span className="stats-sub" style={{ color: getColor(subColor) }}>
-            {subValue}
-          </span>
-        )}
+        <span className="stats-label" style={{
+          fontSize: '10px',
+          fontWeight: 800,
+          color: 'var(--text-muted)',
+          opacity: 0.6,
+          letterSpacing: '1px'
+        }}>{title}</span>
       </div>
     </div>
   );
