@@ -1,101 +1,129 @@
 .settings-container {
-  padding: 24px;
-  max-width: 800px;
-  margin: 0 auto;
-  width: 100%;
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 0 40px;
 }
 
 .page-title {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
-  margin-bottom: 24px;
-  color: var(--text-main);
+  color: var(--text-bright);
+  margin-bottom: 40px;
 }
 
 .setting-card {
   background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 24px;
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glass);
+  border-radius: 24px;
+  padding: 32px;
   margin-bottom: 24px;
+  box-shadow: var(--glass-shadow);
 }
 
 .card-header {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
-  margin-bottom: 16px;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 12px;
+  color: var(--primary);
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .form-group {
-  margin-bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  margin-bottom: 24px;
 }
+
 .form-group label {
-  font-size: 12px;
-  font-weight: 700;
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-muted);
-  text-transform: uppercase;
+  margin-bottom: 10px;
 }
+
 .form-group input[type="text"] {
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  width: 100%;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  color: var(--text-bright);
   font-family: inherit;
+  transition: all 0.2s ease;
 }
 
-/* Slider Style */
-.range-label {
-  display: flex;
-  justify-content: space-between;
-  font-weight: 700;
-}
-.hint {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 4px;
+.form-group input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.05);
 }
 
-/* Button */
 .btn-save {
-  background: var(--primary);
+  padding: 12px 28px;
+  background: var(--primary-gradient);
   color: white;
-  padding: 10px 20px;
-  border-radius: 8px;
   font-weight: 700;
+  border-radius: 12px;
+  box-shadow: 0 8px 16px var(--primary-glow);
 }
 
-/* Toggle Switch */
 .toggle-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-weight: 500;
 }
+
 .toggle-btn {
-  width: 44px;
-  height: 24px;
-  background: #cbd5e1;
+  width: 52px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   position: relative;
-  transition: 0.3s;
+  transition: all 0.3s ease;
 }
+
 .toggle-btn.active {
-  background: var(--success-green);
+  background: var(--primary);
 }
+
 .toggle-circle {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   background: white;
   border-radius: 50%;
   position: absolute;
-  top: 3px;
-  left: 3px;
-  transition: 0.3s;
+  top: 4px;
+  left: 4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 .toggle-btn.active .toggle-circle {
-  left: 23px;
+  left: 28px;
+}
+
+.range-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--primary);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--primary-glow);
 }
