@@ -1,38 +1,40 @@
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Roboto+Mono:wght@400;700&display=swap");
 
 :root {
-  /* Vibrant Glassmorphic Theme */
-  --bg-base: #fdfdff;
-  --bg-surface: rgba(255, 255, 255, 0.75);
-  --bg-glass: rgba(255, 255, 255, 0.45);
+  /* Premium Deep Tech Theme */
+  --bg-base: #0a0a12;
+  --bg-surface: rgba(18, 18, 29, 0.7);
+  --bg-glass: rgba(25, 25, 45, 0.4);
 
-  --primary: #4f46e5;
+  --primary: #6366f1;
   --primary-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-  --primary-glow: rgba(99, 102, 241, 0.25);
+  --primary-glow: rgba(99, 102, 241, 0.35);
 
   --accent-blue: #0ea5e9;
   --accent-purple: #a855f7;
+  --accent-cyan: #22d3ee;
 
-  --text-main: #1e293b;
-  --text-bright: #000000;
-  --text-muted: #64748b;
+  --text-main: #e2e8f0;
+  --text-bright: #ffffff;
+  --text-muted: #94a3b8;
   --text-white: #ffffff;
 
-  --border-glass: rgba(255, 255, 255, 0.6);
-  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-glass: rgba(255, 255, 255, 0.1);
+  --border-subtle: rgba(255, 255, 255, 0.05);
 
-  --emergency-red: #ef4444;
-  --warning-orange: #f59e0b;
-  --success-green: #10b981;
+  --emergency-red: #ff4d4d;
+  --warning-orange: #fbbf24;
+  --success-green: #34d399;
 
   --font-main: 'Outfit', sans-serif;
   --font-mono: 'Roboto Mono', monospace;
 
-  --glass-blur: blur(20px);
-  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
-  --panel-shadow: 0 20px 50px rgba(0, 0, 0, 0.05);
+  --glass-blur: blur(24px);
+  --glass-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  --panel-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
   --radius-xl: 32px;
   --radius-lg: 20px;
+  --radius-md: 12px;
 }
 
 body {

@@ -2,7 +2,6 @@ import React from "react";
 import "./Sidebar.css";
 
 export default function Sidebar({ detections = [] }) {
-  // Get the latest detection (last item in the list)
   const activeDetection = detections.length > 0 ? detections[detections.length - 1] : null;
 
   const getClassInfo = (cls) => {
@@ -12,7 +11,7 @@ export default function Sidebar({ detections = [] }) {
       return {
         label: "Xe Cứu Thương",
         colorVar: "var(--emergency-red)",
-        bgSoft: "rgba(239, 68, 68, 0.08)",
+        bgSoft: "rgba(255, 77, 77, 0.1)",
         icon: "local_hospital",
         tag: "KHẨN CẤP"
       };
@@ -20,7 +19,7 @@ export default function Sidebar({ detections = [] }) {
       return {
         label: "Xe Cứu Hỏa",
         colorVar: "var(--warning-orange)",
-        bgSoft: "rgba(245, 158, 11, 0.08)",
+        bgSoft: "rgba(251, 191, 36, 0.1)",
         icon: "fire_truck",
         tag: "ƯU TIÊN"
       };
@@ -28,7 +27,7 @@ export default function Sidebar({ detections = [] }) {
       return {
         label: "Xe Cảnh Sát",
         colorVar: "var(--primary)",
-        bgSoft: "rgba(79, 70, 229, 0.08)",
+        bgSoft: "rgba(99, 102, 241, 0.1)",
         icon: "local_police",
         tag: "CẢNH SÁT"
       };
@@ -36,7 +35,7 @@ export default function Sidebar({ detections = [] }) {
     return {
       label: "Xe Ưu Tiên",
       colorVar: "var(--text-muted)",
-      bgSoft: "rgba(0,0,0,0.03)",
+      bgSoft: "rgba(255, 255, 255, 0.05)",
       icon: "warning",
       tag: "KHÁC"
     };
@@ -47,13 +46,13 @@ export default function Sidebar({ detections = [] }) {
   return (
     <aside className="sidebar">
       <div className="subheader">
-        <span className="sub-text">NHẬN DIỆN TRỰC TIẾP</span>
+        <span className="sub-text">PHÁT HIỆN TRỰC TIẾP</span>
         <span className="live-tag">TRỰC TIẾP</span>
       </div>
 
-      <div style={{ flex: 1, padding: '0 32px 32px 32px', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         {activeDetection ? (
-          <div className={`active-panel ${info.tag === "KHẨN CẤP" ? "emergency-alert" : ""}`} style={{ padding: '32px', border: `1px solid ${info.colorVar}20` }}>
+          <div className={`active-panel ${info.tag === "KHẨN CẤP" ? "emergency-alert" : ""}`} style={{ padding: '32px' }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px' }}>
               <div style={{
@@ -61,7 +60,7 @@ export default function Sidebar({ detections = [] }) {
                 borderRadius: '18px',
                 background: info.bgSoft,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: `0 8px 20px ${info.bgSoft}`
+                border: `1px solid ${info.colorVar}30`
               }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '32px', color: info.colorVar }}>
                   {info.icon}
@@ -72,39 +71,38 @@ export default function Sidebar({ detections = [] }) {
                   background: info.colorVar, color: 'white',
                   padding: '4px 12px', borderRadius: '8px',
                   fontSize: '11px', fontWeight: 800,
-                  textTransform: 'uppercase',
-                  boxShadow: `0 4px 10px ${info.bgSoft}`
+                  textTransform: 'uppercase'
                 }}>{info.tag}</span>
-                <h2 style={{ margin: '8px 0 0 0', fontSize: '22px', color: 'var(--text-bright)', fontWeight: 800 }}>
+                <h2 style={{ margin: '8px 0 0 0', fontSize: '22px', color: 'var(--text-bright)', fontWeight: 700 }}>
                   {info.label}
                 </h2>
-                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  MÃ NÚT GIAO THÔNG: {activeDetection.vehicle_id}
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: 'var(--text-muted)', fontWeight: 500 }}>
+                  ID: {activeDetection.vehicle_id}
                 </p>
               </div>
             </div>
 
             {/* Details Grid */}
-            <div style={{ display: 'grid', gap: '20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <div style={{ background: 'var(--bg-base)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-                  <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>ĐỘ TIN CẬY</p>
-                  <p style={{ fontSize: '24px', fontWeight: 800, color: info.colorVar }}>
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="detail-card">
+                  <p className="detail-label">ĐỘ TIN CẬY</p>
+                  <p className="detail-value" style={{ color: info.colorVar }}>
                     {(activeDetection.score * 100).toFixed(1)}%
                   </p>
                 </div>
-                <div style={{ background: 'var(--bg-base)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-subtle)' }}>
-                  <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>TRẠNG THÁI</p>
-                  <p style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-main)' }}>
+                <div className="detail-card">
+                  <p className="detail-label">TRẠNG THÁI</p>
+                  <p className="detail-value" style={{ fontSize: '15px' }}>
                     {activeDetection.direction || "ĐÃ PHÁT HIỆN"}
                   </p>
                 </div>
               </div>
 
-              <div style={{ background: 'var(--bg-base)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="detail-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <p style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>THỜI GIAN ĐẾN</p>
-                  <p style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-main)' }}>
+                  <p className="detail-label">THỜI GIAN</p>
+                  <p className="detail-value" style={{ fontSize: '18px' }}>
                     {activeDetection.time}
                   </p>
                 </div>
@@ -118,50 +116,30 @@ export default function Sidebar({ detections = [] }) {
               }}>
                 <span className="material-symbols-outlined" style={{ color: info.colorVar }}>verified_user</span>
                 <div>
-                  <p style={{ fontSize: '12px', fontWeight: 800, color: info.colorVar, marginBottom: '4px' }}>HỆ THỐNG XÁC THỰC</p>
+                  <p style={{ fontSize: '12px', fontWeight: 800, color: info.colorVar, marginBottom: '4px' }}>XÁC THỰC HỆ THỐNG</p>
                   <p style={{ fontSize: '13px', color: 'var(--text-main)', opacity: 0.7, lineHeight: '1.5' }}>
                     Xe ưu tiên đã được xác minh. Các nút giao thông đã được thông báo để ưu tiên làn đường.
                   </p>
                 </div>
               </div>
             </div>
-
           </div>
         ) : (
-          <div style={{
-            flex: 1, display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            color: 'var(--text-muted)', background: 'white',
-            borderRadius: '24px', border: '2px dashed var(--border-subtle)',
-            margin: '0 8px'
-          }}>
-            <div style={{ marginBottom: '32px', position: 'relative' }}>
-              <div style={{
-                width: '80px', height: '80px',
-                borderRadius: '50%', border: '2px solid var(--primary)',
-                borderTopColor: 'transparent',
-                animation: 'spin 2s linear infinite'
-              }}></div>
-              <span className="material-symbols-outlined" style={{
-                position: 'absolute', top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
-                fontSize: '32px', color: 'var(--primary)'
-              }}>radar</span>
+          <div className="scanning-container">
+            <div className="radar-wrapper">
+              <div className="radar-pulse"></div>
+              <div className="radar-circle">
+                <div className="radar-sweep"></div>
+                <span className="material-symbols-outlined" style={{ fontSize: '40px', color: 'var(--primary)', position: 'relative', zIndex: 2 }}>radar</span>
+              </div>
             </div>
-            <h3 style={{ fontSize: '16px', marginBottom: '8px', fontWeight: 800, color: 'var(--text-main)' }}>ĐANG QUÉT HỆ THỐNG</h3>
-            <p style={{ fontSize: '13px', textAlign: 'center', maxWidth: '240px', lineHeight: '1.6' }}>
+            <h3 className="scanning-title">ĐANG QUÉT TÍN HIỆU</h3>
+            <p className="scanning-text">
               Đang theo dõi các nguồn camera để phát hiện tín hiệu xe ưu tiên...
             </p>
           </div>
         )}
       </div>
-
-      <style>{`
-        @keyframes spin { 
-            0% { transform: rotate(0deg); } 
-            100% { transform: rotate(360deg); } 
-        }
-      `}</style>
     </aside>
   );
 }
