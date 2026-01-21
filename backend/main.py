@@ -1,4 +1,6 @@
 import os, cv2, base64, asyncio, shutil
+import torch
+import numpy as np
 from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 import socketio
@@ -6,138 +8,126 @@ from ultralytics import YOLO
 from urllib.parse import unquote
 
 app = FastAPI()
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*', ping_timeout=300, ping_interval=50)
 socket_app = socketio.ASGIApp(sio, app)
 
-# 1. Cấu hình CORS
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"],
 )
 
-# 2. Khởi tạo Model (OpenVINO)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "models", "best_openvino_model")
 UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+PT_MODEL_PATH = os.path.join(BASE_DIR, "models", "best.pt")
 STOP_SIGNAL = False
+device = '0' if torch.cuda.is_available() else 'cpu'
 
-try:
-    # Ưu tiên load OpenVINO
-    model = YOLO(MODEL_PATH, task='detect')
-    print("🚀 Đã kích hoạt Intel OpenVINO Engine!")
-except Exception as e:
-    print(f"⚠️ Đang dùng file .pt gốc vì: {e}")
-    model = YOLO(os.path.join(BASE_DIR, "models", "best.pt"))
+# Load Model
+print(f"🚀 Loading Model on {device}...")
+model = YOLO(PT_MODEL_PATH) 
+# Warmup nhẹ
+model.predict(source=np.zeros((320, 320, 3), dtype=np.uint8), imgsz=320, device=device, verbose=False)
+print("✅ Server Ready!")
 
-# 3. Hàm Upload Video
 @app.post("/upload")
 async def upload_video(file: UploadFile = File(...)):
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    print(f"📁 Đã lưu file: {file.filename}")
     return {"video_id": file.filename}
 
-# 4. Hàm Chạy AI (Xử lý chính)
 @app.post("/start-ai/{video_id}")
 async def start_ai(video_id: str):
+    # 1. Reset ngay lập tức tín hiệu dừng
     global STOP_SIGNAL
     STOP_SIGNAL = False
     
     decoded_name = unquote(video_id)
     video_path = os.path.join(UPLOAD_DIR, decoded_name)
     
+    print(f"\n--- YÊU CẦU CHẠY VIDEO: {decoded_name} ---")
+
+    # 2. Kiểm tra file có tồn tại không (Nguyên nhân chính gây lỗi nháy màn hình)
     if not os.path.exists(video_path):
-        print(f"❌ Không tìm thấy file: {video_path}")
-        return {"status": "error", "message": "File not found"}
+        print(f"❌ LỖI: File không tồn tại! Có thể đã bị xóa ở lần chạy trước.")
+        return {"status": "error", "message": "Video file missing. Please re-upload."}
 
     cap = cv2.VideoCapture(video_path)
-    boxes_data = []
+    
+    # 3. Kiểm tra xem OpenCV có mở được file không
+    if not cap.isOpened():
+        print(f"❌ LỖI: OpenCV không mở được file video.")
+        return {"status": "error", "message": "Cannot open video"}
+    
+    # Cấu hình
+    PROCESS_SIZE = 320 
+    SKIP_FRAMES = 3 if device == 'cpu' else 1
+    CONF_THRESHOLD = 0.6
     frame_count = 0
+    cached_boxes = [] 
+
+    print(f"▶️ Bắt đầu loop xử lý...")
 
     try:
         while cap.isOpened():
+            # Ưu tiên kiểm tra tín hiệu dừng
             if STOP_SIGNAL: 
-                print("🛑 Dừng xử lý theo yêu cầu.")
+                print("🛑 Đã dừng theo yêu cầu (Nút bấm).")
                 break
-                
+            
             success, frame = cap.read()
-            if not success: break
+            
+            # Hết video -> Break để dừng lại (cho phép chạy lại lần sau)
+            if not success: 
+                print("🏁 Đã hết video (Tự động dừng).")
+                break 
             
             frame_count += 1
+            frame_resized = cv2.resize(frame, (PROCESS_SIZE, PROCESS_SIZE))
 
-            # Resize về 480 để khớp với model export imgsz=480
-            frame_resized = cv2.resize(frame, (480, 480))
-            
-            # Predict với imgsz=480
-            results = model.predict(
-                source=frame_resized, 
-                imgsz=480, 
-                device='cpu', 
-                verbose=False
-            )
+            # --- AI DETECT ---
+            if frame_count % SKIP_FRAMES == 0 or frame_count == 1:
+                results = model.predict(source=frame_resized, imgsz=PROCESS_SIZE, device=device, verbose=False, conf=CONF_THRESHOLD)
+                
+                cached_boxes = [] 
+                if results and len(results[0].boxes) > 0:
+                    for result in results[0].boxes:
+                        x1, y1, x2, y2 = result.xyxy[0].tolist()
+                        label = model.names[int(result.cls[0])]
+                        conf = float(result.conf[0])
+                        cached_boxes.append((int(x1), int(y1), int(x2), int(y2), label, conf))
 
-            if results and len(results) > 0:
-                new_boxes = []
-                for result in results[0].boxes:
-                    x1, y1, x2, y2 = result.xyxy[0].tolist()
-                    cls_id = int(result.cls[0])
-                    label = model.names[cls_id]
-                    conf = float(result.conf[0])
+            # --- VẼ ---
+            for (x1, y1, x2, y2, label, conf) in cached_boxes:
+                cv2.rectangle(frame_resized, (x1, y1), (x2, y2), (0, 0, 255), 2)
+                cv2.putText(frame_resized, f"{label} {conf:.2f}", (x1, y1 - 5), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-                    # Chỉ lấy kết quả có độ tin tưởng > 30%
-                    if conf > 0.3:
-                        # --- ĐÂY LÀ PHẦN SỬA ĐỔI QUAN TRỌNG ---
-                        # Tạo nhãn hiển thị kèm điểm số: "xe cuu thuong 0.75"
-                        display_label = f"{label} {conf:.2f}"
-                        
-                        new_boxes.append({
-                            "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                            "label": display_label, # Gửi chuỗi đã format qua React
-                            "score": conf,
-                            "alert": "xe" in label.lower()
-                        })
-                        
-                        # In ra Terminal để kiểm tra
-                        print(f"🎯 Frame {frame_count}: {display_label}")
-                        
-                boxes_data = new_boxes 
-
-            # Encode ảnh gửi qua Socket
-            _, buffer = cv2.imencode('.jpg', frame_resized, [cv2.IMWRITE_JPEG_QUALITY, 50])
+            # --- GỬI ---
+            _, buffer = cv2.imencode('.jpg', frame_resized, [cv2.IMWRITE_JPEG_QUALITY, 35])
             img_base64 = base64.b64encode(buffer).decode('utf-8')
 
             await sio.emit("frame", img_base64)
-            await sio.emit("ai_data", boxes_data)
-            
-            # Giúp server có thời gian xử lý request khác
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0.0001)
 
+    except Exception as e:
+        print(f"❌ Exception: {e}")
+        
     finally:
         cap.release()
-        if os.path.exists(video_path):
-            try:
-                os.remove(video_path)
-                print(f"🗑️ Đã dọn dẹp file: {decoded_name}")
-            except:
-                pass
+        # --- TUYỆT ĐỐI KHÔNG XÓA FILE ---
+        # (Đảm bảo dòng os.remove(video_path) ĐÃ BỊ XÓA HOẶC COMMENT LẠI)
+        print(f"✅ Kết thúc session. File vẫn được giữ lại: {os.path.exists(video_path)}")
 
     return {"status": "completed"}
 
-# 5. Hàm Dừng AI
 @app.post("/stop-ai")
 async def stop_ai():
     global STOP_SIGNAL
     STOP_SIGNAL = True
-    print("🚩 Đã đặt tín hiệu STOP")
     return {"status": "stopping"}
 
-# 6. Chạy Server
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(socket_app, host="127.0.0.1", port=8000)
