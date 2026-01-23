@@ -2,220 +2,263 @@ import { useRef, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 import "./VideoPlayer.css";
 
+// Cấu hình chống nhấp nháy
+const FLICKER_BUFFER = 10;
+
 export default function SmartVideoPlayer() {
   const imgRef = useRef(null);
   const canvasRef = useRef(null);
   const socketRef = useRef(null);
 
+  // State giao diện
+  const [trafficStatus, setTrafficStatus] = useState("NORMAL");
+  const [detectedVehicle, setDetectedVehicle] = useState(null);
+  const [analysisLogs, setAnalysisLogs] = useState([]);
+
+  // State quản lý video
   const [videoId, setVideoId] = useState(null);
   const [fileName, setFileName] = useState("");
-  const [localVideoUrl, setLocalVideoUrl] = useState(null);
-  const [isAiActive, setIsAiActive] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const videoRef = useRef(null);
+
+  // Refs
+  const lastLogTimeRef = useRef(0);
+  const persistenceRef = useRef(0);
+  const lastBoxesRef = useRef([]);
+
+  // --- HÀM VẼ KHUNG ---
+  const drawBoxes = (boxes) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    boxes.forEach(box => {
+      const { x1, y1, x2, y2, label, conf } = box;
+
+      // < 90%: KHÔNG VẼ
+      if (conf < 0.9) return;
+
+      const color = "#ef4444";
+
+      // 1. Vẽ khung
+      ctx.beginPath();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = color;
+      ctx.rect(x1, y1, x2 - x1, y2 - y1);
+      ctx.stroke();
+
+      // 2. Vẽ góc (Corner Brackets)
+      const cornerLen = 20;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1 + cornerLen); ctx.lineTo(x1, y1); ctx.lineTo(x1 + cornerLen, y1);
+      ctx.moveTo(x2 - cornerLen, y1); ctx.lineTo(x2, y1); ctx.lineTo(x2, y1 + cornerLen);
+      ctx.moveTo(x1, y2 - cornerLen); ctx.lineTo(x1, y2); ctx.lineTo(x1 + cornerLen, y2);
+      ctx.moveTo(x2 - cornerLen, y2); ctx.lineTo(x2, y2); ctx.lineTo(x2, y2 - cornerLen);
+      ctx.stroke();
+
+      // 3. Vẽ nền thông tin
+      ctx.fillStyle = "rgba(239, 68, 68, 0.8)";
+      const text = `⚠️ ${label.toUpperCase()} [${Math.round(conf*100)}%]`;
+      const textWidth = ctx.measureText(text).width + 30;
+      ctx.fillRect(x1, y1 - 35, textWidth, 35);
+
+      // 4. Vẽ chữ
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 14px 'Segoe UI', sans-serif";
+      ctx.fillText(text, x1 + 10, y1 - 12);
+    });
+  };
 
   useEffect(() => {
     socketRef.current = io("http://127.0.0.1:8000");
 
-    // 1. Lắng nghe ảnh (frame)
-    socketRef.current.on("frame", (base64Image) => {
-      setIsAiActive(true);
-      if (imgRef.current) {
-        imgRef.current.src = "data:image/jpeg;base64," + base64Image;
+    socketRef.current.on("frame_packet", (data) => {
+      const { image, boxes, system_status, priority_label } = data;
+
+      if (imgRef.current) imgRef.current.src = "data:image/jpeg;base64," + image;
+
+      // CHỐNG NHẤP NHÁY
+      let boxesToDraw = [];
+      if (boxes.length > 0) {
+        boxesToDraw = boxes;
+        lastBoxesRef.current = boxes;
+        persistenceRef.current = FLICKER_BUFFER;
+      } else {
+        if (persistenceRef.current > 0) {
+           boxesToDraw = lastBoxesRef.current;
+           persistenceRef.current -= 1;
+        }
+      }
+
+      if (canvasRef.current) drawBoxes(boxesToDraw);
+
+      setTrafficStatus(system_status);
+
+      if (system_status === "PRIORITY") {
+          setDetectedVehicle({ label: priority_label });
+
+          const now = Date.now();
+          if (now - lastLogTimeRef.current > 2000) {
+              const newLog = {
+                  id: now,
+                  time: new Date().toLocaleTimeString('vi-VN'),
+                  label: priority_label,
+                  conf: "> 90%",
+                  action: "MỞ ĐÈN XANH"
+              };
+              setAnalysisLogs(prev => [newLog, ...prev].slice(0, 10));
+              lastLogTimeRef.current = now;
+          }
+      } else {
+          setDetectedVehicle(null);
       }
     });
 
-    // 2. Lắng nghe dữ liệu tọa độ (ai_data)
-    socketRef.current.on("ai_data", (boxes) => {
-      const canvas = canvasRef.current;
-      if (canvas) {
-        const ctx = canvas.getContext("2d");
-        drawBoxes(ctx, boxes); // Gọi hàm vẽ với đầy đủ ctx và boxes
-      }
-    });
-
-    return () => {
-      if (socketRef.current) socketRef.current.disconnect();
-    };
+    return () => { if(socketRef.current) socketRef.current.disconnect(); };
   }, []);
 
-  // 2️⃣ Control video playback based on isPlaying
-  useEffect(() => {
-    const videoEl = videoRef.current;
-    if (!videoEl) return;
-    if (isPlaying) {
-      videoEl.play().catch((e) => console.warn('Play prevented:', e));
-    } else {
-      videoEl.pause();
-      videoEl.currentTime = 0;
-    }
-  }, [isPlaying]);
-
-  // 3. Hàm vẽ Box (Sửa lại để khớp với ảnh 480x480)
-  const drawBoxes = (ctx, boxes) => {
-    // Xóa khung cũ trước khi vẽ khung mới
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    boxes.forEach(box => {
-      const { x1, y1, x2, y2, label } = box;
-
-      // Tính toán kích thước
-      const width = x2 - x1;
-      const height = y2 - y1;
-
-      // Vẽ khung hình chữ nhật (Màu hồng giống video mẫu)
-      ctx.strokeStyle = "#FF00FF";
-      ctx.lineWidth = 4;
-      ctx.strokeRect(x1, y1, width, height);
-
-      // Vẽ nhãn chữ nền hồng
-      ctx.fillStyle = "#FF00FF";
-      ctx.font = "bold 18px Arial";
-      const textWidth = ctx.measureText(label).width;
-
-      // Vẽ background cho chữ
-      ctx.fillRect(x1 - 2, y1 - 30, textWidth + 10, 30);
-
-      // Vẽ chữ (Tên xe + Score)
-      ctx.fillStyle = "white";
-      ctx.fillText(label, x1 + 3, y1 - 8);
-    });
-  };
-
-
-  // 3️⃣ Upload video
+  // --- SỬA LỖI Ở ĐÂY ---
   const uploadVideo = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setFileName(file.name);
 
-    // Tạo preview URL cục bộ
-    const url = URL.createObjectURL(file);
-    setLocalVideoUrl(url);
-    setIsAiActive(false);
-    setIsPlaying(false);
-
     const form = new FormData();
     form.append("file", file);
+
     try {
-      const res = await fetch("http://127.0.0.1:8000/upload", {
-        method: "POST",
-        body: form
-      });
+        // Gửi file lên backend
+        const res = await fetch("http://127.0.0.1:8000/upload", { method: "POST", body: form });
+        const data = await res.json();
 
-      const data = await res.json();
-      if (data.video_id) {
-        setVideoId(data.video_id);
-        console.log("Đã nhận ID:", data.video_id);
-      }
-    } catch (error) {
-      console.error("Lỗi upload:", error);
-    }
+        // Lưu lại ID video để dùng cho nút Bắt Đầu
+        if (data.video_id) {
+            setVideoId(data.video_id);
+            // Không cần alert nữa cho chuyên nghiệp
+        }
+    } catch(e) { console.error(e); }
   };
 
-  // 4️⃣ Bắt đầu AI
   const handleStart = async () => {
-    if (!videoId) return alert("Upload video trước");
-    setIsPlaying(true);
+    // Kiểm tra xem đã có videoId chưa
+    if(!videoId) return alert("Vui lòng nạp video nguồn trước!");
 
-    await fetch(`http://127.0.0.1:8000/start-ai/${encodeURIComponent(videoId)}`, {
-      method: "POST"
-    });
+    setIsPlaying(true);
+    await fetch(`http://127.0.0.1:8000/start-ai/${encodeURIComponent(videoId)}`, { method: "POST" });
   };
 
-  // 5️⃣ Dừng AI
   const handleStop = async () => {
     setIsPlaying(false);
-    setIsAiActive(false);
-
-    // Xóa nội dung canvas
-    const canvas = canvasRef.current;
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
-
-    try {
-      await fetch("http://127.0.0.1:8000/stop-ai", {
-        method: "POST"
-      });
-    } catch (error) {
-      console.error("Lỗi khi dừng AI:", error);
-    }
+    setTrafficStatus("NORMAL");
+    await fetch("http://127.0.0.1:8000/stop-ai", { method: "POST" });
   };
 
   return (
-    <div className="video-player-container">
-      <div className="controls-bar">
-        <div className="file-input-wrapper">
-          <button className="btn-upload" type="button">
-            <span className="material-symbols-outlined">upload_file</span>
-            {fileName || "Chọn Video Nguồn"}
-          </button>
-          {/* Input thật nằm đè lên trên và ẩn đi */}
-          <input
-            type="file"
-            accept="video/*"
-            onChange={uploadVideo}
-            style={{ opacity: 0, position: 'absolute', left: 0, top: 0, width: '100%', height: '100%', cursor: 'pointer', zIndex: 10 }}
-          />
-        </div>
+    <div className="command-center-wrapper">
 
-        {!isPlaying ? (
-          <button className="btn-start" onClick={handleStart}>
-            <span className="material-symbols-outlined">play_circle</span>
-            BẮT ĐẦU
-          </button>
-        ) : (
-          <button className="btn-stop" onClick={handleStop}>
-            <span className="material-symbols-outlined">stop_circle</span>
-            DỪNG
-          </button>
-        )}
+      {/* KHU VỰC TRUNG TÂM */}
+      <div className={`main-monitor ${trafficStatus === 'PRIORITY' ? 'alert-state' : ''}`}>
+
+          <div className="monitor-header">
+             <div className="cam-id">
+                <span className="dot"></span> LIVE CAM-01 [NGÃ TƯ HÀNG XANH]
+             </div>
+             <div className="sys-status">
+                {trafficStatus === 'PRIORITY' ?
+                    <span className="status-danger">PHÁT HIỆN ĐỐI TƯỢNG</span> :
+                    <span className="status-safe">HỆ THỐNG SẴN SÀNG</span>
+                }
+             </div>
+          </div>
+
+          <div className="video-viewport">
+              <img ref={imgRef} className="video-feed" style={{objectFit: 'fill'}} />
+              <canvas ref={canvasRef} width={854} height={480} className="overlay-canvas" />
+              <div className="grid-overlay"></div>
+
+              {!isPlaying && (
+                <div className="standby-screen">
+                    <div className="logo-spin">📡</div>
+                    <p>WAITING FOR SIGNAL...</p>
+                </div>
+              )}
+          </div>
+
+          <div className="control-deck">
+            <div className="input-group">
+                <label className="custom-file-upload">
+                    <input type="file" onChange={uploadVideo} />
+                    📂 {fileName || "NẠP VIDEO NGUỒN"}
+                </label>
+            </div>
+
+            <div className="action-buttons">
+                {!isPlaying ? (
+                    <button className="btn-cmd btn-start" onClick={handleStart}>
+                        <span>▶</span> KÍCH HOẠT QUÉT
+                    </button>
+                ) : (
+                    <button className="btn-cmd btn-stop" onClick={handleStop}>
+                        <span>⏹</span> NGẮT KẾT NỐI
+                    </button>
+                )}
+            </div>
+          </div>
       </div>
 
-      <div className="video-view-wrapper">
-        {/* Hiển thị video preview cục bộ khi chưa chạy AI */}
-        {localVideoUrl && !isAiActive && (
-          <video
-            ref={videoRef}
-            src={localVideoUrl}
-            controls={false}
-            // autoPlay removed to control playback manually
-            muted
-            loop
-            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-          />
-        )}
+      {/* KHU VỰC SIDEBAR */}
+      <div className="side-panel">
 
-        {/* Hiển thị stream từ AI socket */}
-        <img
-          ref={imgRef}
-          alt="Live feed"
-          style={{ display: isAiActive ? 'block' : 'none', width: '100%', height: '100%', objectFit: 'contain' }}
-        />
-
-        <canvas
-          ref={canvasRef}
-          width={480}   // PHẢI LÀ 480 để khớp với imgsz của AI
-          height={480}  // PHẢI LÀ 480
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            pointerEvents: 'none',
-            objectFit: 'contain' // Đảm bảo canvas giãn nở giống hệt thẻ <img>
-          }}
-        />
-
-        {!localVideoUrl && !videoId && (
-          <div className="no-feed">
-            <span className="material-symbols-outlined">videocam_off</span>
-            <p>Chưa có tín hiệu camera</p>
+          <div className="widget traffic-widget">
+              <div className="widget-header">TÍN HIỆU ĐIỀU PHỐI</div>
+              <div className="traffic-light-container">
+                  <div className={`bulb red ${trafficStatus === 'NORMAL' ? 'active' : ''}`}></div>
+                  <div className={`bulb green ${trafficStatus === 'PRIORITY' ? 'active' : ''}`}></div>
+              </div>
+              <div className="traffic-info">
+                {trafficStatus === 'PRIORITY' ? (
+                    <div className="priority-msg">
+                        <div className="blink-text">ƯU TIÊN</div>
+                        <div className="vehicle-tag">{detectedVehicle?.label.toUpperCase()}</div>
+                    </div>
+                ) : (
+                    <div className="normal-msg">GIỮ TÍN HIỆU ĐỎ</div>
+                )}
+              </div>
           </div>
-        )}
+
+          <div className="widget log-widget">
+              <div className="widget-header">
+                  DỮ LIỆU THỜI GIAN THỰC
+                  <span className="pulse-dot"></span>
+              </div>
+              <div className="log-list">
+                  {analysisLogs.length === 0 ? (
+                      <div className="no-data">
+                          <div className="scan-line"></div>
+                          <span>Đang quét...</span>
+                      </div>
+                  ) : (
+                      analysisLogs.map(log => (
+                          <div key={log.id} className="log-item">
+                              <div className="log-icon">🚑</div>
+                              <div className="log-details">
+                                  <div className="log-row-1">
+                                      <span className="log-lbl">{log.label.toUpperCase()}</span>
+                                      <span className="log-cnf">{log.conf}</span>
+                                  </div>
+                                  <div className="log-row-2">
+                                      <span>{log.time}</span>
+                                      <span className="log-act">{log.action}</span>
+                                  </div>
+                              </div>
+                          </div>
+                      ))
+                  )}
+              </div>
+          </div>
       </div>
     </div>
   );
