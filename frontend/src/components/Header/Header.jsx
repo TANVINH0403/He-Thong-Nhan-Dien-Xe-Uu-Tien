@@ -1,65 +1,44 @@
 import React from "react";
 import "./Header.css";
 
-// Nhận props onNavigate và activePage từ App.jsx
-export default function Header({ onNavigate, activePage }) {
+// Nhận stats từ App.jsx
+export default function Header({ onOpenSettings, stats }) {
+  // Nếu stats chưa tải, dùng mặc định 0
+  const data = stats || { today: 0, ambulance: 0, firetruck: 0, police: 0 };
+
   return (
-    <header className="header-container">
-      <div className="brand-section">
-        <div className="logo-icon">
-          <span
-            className="material-symbols-outlined"
-            style={{ color: "white" }}
-          >
-            emergency_share
-          </span>
+    <header className="its-header">
+      <div className="header-left">
+        <div className="logo-box">🛡️</div>
+        <div className="system-title">
+            <h1>HỆ THỐNG NHẬN DIỆN XE ƯU TIÊN THÔNG MINH</h1>
+            <p>TRUNG TÂM ĐIỀU HÀNH GIAO THÔNG</p>
         </div>
-        <h1 className="brand-title">Hệ thống nhận diện xe ưu tiên</h1>
-
-        <nav className="nav-menu">
-          {/* Menu Live */}
-          <a
-            href="#"
-            className={`nav-link ${activePage === "live" ? "active" : ""}`}
-            onClick={() => onNavigate("live")}
-          >
-            <span className="dot-pulse"></span> Giám sát trực tiếp
-          </a>
-
-          {/* Menu Analytics */}
-          <a
-            href="#"
-            className={`nav-link ${activePage === "analytics" ? "active" : ""}`}
-            onClick={() => onNavigate("analytics")}
-          >
-            Phân tích dữ liệu
-          </a>
-
-          {/* Menu Config */}
-          <a
-            href="#"
-            className={`nav-link ${activePage === "config" ? "active" : ""}`}
-            onClick={() => onNavigate("config")}
-          >
-            Cấu hình hệ thống
-          </a>
-        </nav>
       </div>
 
-      {/* Phần bên phải giữ nguyên... */}
-      <div className="right-section">
-        <div className="status-badge">
-          <span
-            className="material-symbols-outlined"
-            style={{ fontSize: "14px" }}
-          >
-            fiber_manual_record
-          </span>
-          Hệ thống sẵn sàng
-        </div>
-        <button className="btn-icon">
-          <span className="material-symbols-outlined">notifications</span>
-        </button>
+      <div className="header-stats">
+          <div className="stat-item">
+              <span className="stat-label">TỔNG HÔM NAY</span>
+              <span className="stat-val text-blue">{data.today}</span>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="stat-item">
+              <span className="stat-label">🚑 CẤP CỨU</span>
+              <span className="stat-val text-red">{data.ambulance}</span>
+          </div>
+          <div className="stat-item">
+              <span className="stat-label">🚒 CỨU HỎA</span>
+              <span className="stat-val text-orange">{data.firetruck}</span>
+          </div>
+          <div className="stat-item">
+              <span className="stat-label">🚓 CẢNH SÁT</span>
+              <span className="stat-val text-cyan">{data.police}</span>
+          </div>
+      </div>
+
+      <div className="header-right">
+         <div className="status-indicator"><span className="pulse-green"></span> ONLINE</div>
+         <button className="btn-settings" onClick={onOpenSettings}>⚙️ CẤU HÌNH</button>
       </div>
     </header>
   );

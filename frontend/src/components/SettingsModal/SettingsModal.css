@@ -1,0 +1,92 @@
+/* Lớp phủ làm tối màn hình - QUAN TRỌNG: z-index phải cao nhất */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.85);
+    z-index: 99999; /* Luôn nổi lên trên cùng */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+/* Hộp nội dung Popup */
+.modal-content {
+    background: #0f172a;
+    width: 500px;
+    max-width: 90%;
+    border-radius: 12px;
+    border: 1px solid #334155;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    color: #e2e8f0;
+    font-family: 'Segoe UI', sans-serif;
+    animation: zoomIn 0.2s ease-out;
+    display: flex;
+    flex-direction: column;
+}
+
+@keyframes zoomIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+    background: #1e293b;
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #334155;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header h2 { margin: 0; font-size: 16px; color: #38bdf8; text-transform: uppercase; }
+
+.btn-close {
+    background: transparent; border: none; color: #94a3b8;
+    font-size: 28px; cursor: pointer; line-height: 1;
+    padding: 0 5px;
+}
+.btn-close:hover { color: #fff; }
+
+.modal-body { padding: 20px; max-height: 70vh; overflow-y: auto; }
+
+.setting-group { margin-bottom: 25px; border-bottom: 1px solid #1e293b; padding-bottom: 15px; }
+.setting-group h3 { font-size: 12px; color: #94a3b8; margin-bottom: 10px; text-transform: uppercase; }
+
+.input-row { margin-bottom: 15px; }
+.input-row label { display: block; margin-bottom: 5px; font-size: 13px; font-weight: 600; }
+.input-row input[type=text] {
+    width: 100%; padding: 10px; background: #020617; border: 1px solid #334155;
+    color: white; border-radius: 6px; box-sizing: border-box;
+}
+.input-row input[type=range] { width: 100%; cursor: pointer; }
+
+/* VÙNG RESET DỮ LIỆU */
+.danger-zone {
+    background: rgba(220, 38, 38, 0.1);
+    border: 1px solid #991b1b;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+.danger-zone h3 { color: #ef4444; border-bottom: none; }
+.danger-desc { font-size: 12px; color: #fca5a5; margin-bottom: 10px; }
+
+.btn-reset {
+    width: 100%; padding: 10px; background: #dc2626; color: white;
+    border: none; border-radius: 6px; font-weight: bold; cursor: pointer;
+    transition: 0.2s;
+}
+.btn-reset:hover { background: #b91c1c; }
+
+.modal-footer {
+    padding: 15px 20px; background: #1e293b;
+    display: flex; justify-content: flex-end; gap: 10px;
+    border-radius: 0 0 12px 12px;
+}
+.btn-save-modal { padding: 8px 25px; background: #0ea5e9; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+.btn-cancel { padding: 8px 20px; background: transparent; border: 1px solid #475569; color: #cbd5e1; border-radius: 6px; cursor: pointer; }

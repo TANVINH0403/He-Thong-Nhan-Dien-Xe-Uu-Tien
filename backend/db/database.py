@@ -5,45 +5,78 @@ from datetime import datetime
 DB_NAME = 'detections.db'
 
 def init_db():
-    """Khởi tạo database và bảng history nếu chưa có"""
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    # Tạo bảng nếu chưa có
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS history (
+        CREATE TABLE IF NOT EXISTS vehicle_logs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             vehicle_type TEXT,
             confidence REAL,
             timestamp TEXT,
+            plate_id TEXT,
             image_path TEXT,
             status TEXT DEFAULT 'Chờ xử lý'
         )
     ''')
     conn.commit()
     conn.close()
-    print("✅ Database initialized!")
 
-def log_detection(vehicle_type, confidence, image_path):
-    """Lưu thông tin xe phát hiện vào DB"""
+def log_detection(vehicle_type, confidence, plate_id):
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
-
-    now = datetime.now().strftime("%H:%M:%S %d-%m-%Y")
-
+    now = datetime.now().strftime("%H:%M:%S %d/%m/%Y")
     cursor.execute("""
-        INSERT INTO history (vehicle_type, confidence, timestamp, image_path)
+        INSERT INTO vehicle_logs (vehicle_type, confidence, timestamp, plate_id)
         VALUES (?, ?, ?, ?)
-    """, (vehicle_type, confidence, now, image_path))
-
+    """, (vehicle_type, confidence, now, plate_id))
     conn.commit()
     conn.close()
-    return now
 
-def get_recent_history(limit=10):
-    """Lấy danh sách xe vừa phát hiện để hiển thị lên Web"""
+def get_recent_history(limit=50):
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM history ORDER BY id DESC LIMIT ?", (limit,))
-    rows = cursor.fetchall()
-    conn.close()
-    return [dict(row) for row in rows]
+    try:
+        cursor.execute("SELECT * FROM vehicle_logs ORDER BY id DESC LIMIT ?", (limit,))
+        rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            result.append({
+                "id": row["id"],
+                "type": row["vehicle_type"],
+                "conf": row["confidence"],
+                "time": row["timestamp"],
+                "plate": row["plate_id"]
+            })
+        return result
+    except:
+        return []
+    finally:
+        conn.close()
+
+def clear_history():
+    conn = sqlite3.connect(DB_NAME)
+    cursor = conn.cursor()
+    try:
+        # LỆNH HỦY DIỆT: Xóa sạch bảng và tạo lại
+        cursor.execute("DROP TABLE IF EXISTS vehicle_logs")
+        conn.commit()
+        # Tạo lại bảng mới tinh
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS vehicle_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                vehicle_type TEXT,
+                confidence REAL,
+                timestamp TEXT,
+                plate_id TEXT,
+                image_path TEXT,
+                status TEXT DEFAULT 'Chờ xử lý'
+            )
+        ''')
+        conn.commit()
+        print("✅ Đã xóa sạch dữ liệu và tạo bảng mới!")
+    except Exception as e:
+        print(f"Lỗi xóa DB: {e}")
+    finally:
+        conn.close()

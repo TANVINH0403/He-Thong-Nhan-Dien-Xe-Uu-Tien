@@ -1,42 +1,28 @@
+/* src/App.css */
+:root {
+  --bg-dark: #050505;
+  --text-primary: #e2e8f0;
+}
+
+body {
+  margin: 0; padding: 0;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', sans-serif;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden; /* Chặn thanh cuộn thừa */
+}
+
 .app-layout {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  position: relative;
-  overflow: hidden;
-  padding: 16px;
-  gap: 12px;
 }
 
 .main-wrapper {
-  display: flex;
-  flex: 1;
+  flex: 1; /* Chiếm toàn bộ phần còn lại dưới Header */
+  position: relative;
   overflow: hidden;
-  gap: 16px;
-}
-
-.content-area {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  overflow-y: scroll;
-  padding-right: 8px;
-  /* Space for scrollbar */
-}
-
-.content-area::-webkit-scrollbar {
-  width: 4px;
-}
-
-.content-area::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 10px;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  flex-shrink: 0;
+  display: flex; /* Quan trọng để con cái full chiều cao */
 }
