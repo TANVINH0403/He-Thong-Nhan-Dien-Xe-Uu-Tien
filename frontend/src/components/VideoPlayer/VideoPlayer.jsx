@@ -11,12 +11,31 @@ const MAX_STICKY_FRAMES = 10; // Giữ khung hình thêm 10 frames (0.3s) khi xe
 const TRACKING_DIST = 150;
 
 const getVehicleInfo = (label) => {
-    if (!label) return { name: "UNK", icon: "❓", color: "#666", type: "UNK" };
+    if (!label) return null;
     const l = label.toLowerCase();
-    if (l.includes("ambu") || l.includes("thuong")) return { name: "CỨU THƯƠNG", icon: "🚑", color: "#ef4444", type: "AMB" };
-    if (l.includes("fire") || l.includes("hoa")) return { name: "CỨU HỎA", icon: "🚒", color: "#f97316", type: "FIR" };
-    if (l.includes("police") || l.includes("canh")) return { name: "CẢNH SÁT", icon: "🚓", color: "#3b82f6", type: "POL" };
-    return { name: "XE ƯU TIÊN", icon: "🚨", color: "#eab308", type: "PRI" };
+
+    // 1. Xe Cứu Thương
+    if (l.includes("cuu thuong")) {
+        return { name: "CỨU THƯƠNG", icon: "🚑", color: "#ef4444", type: "AMB" };
+    }
+
+    // 2. Xe Cứu Hỏa
+    if (l.includes("cuu hoa")) {
+        return { name: "CỨU HỎA", icon: "🚒", color: "#f97316", type: "FIR" };
+    }
+
+    // 3. Xe Cảnh Sát
+    if (l.includes("canh sat")) {
+        return { name: "CẢNH SÁT", icon: "🚓", color: "#3b82f6", type: "POL" };
+    }
+
+    // 4. Xe Quân Đội
+    if (l.includes("quan doi")) {
+        return { name: "XE QUÂN ĐỘI", icon: "🪖", color: "#166534", type: "MIL" };
+    }
+
+    // Các xe khác
+    return null;
 };
 
 const getDistance = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
@@ -62,7 +81,11 @@ export default function SmartVideoPlayer({ config }) {
     const currentTracks = activeTracksRef.current;
 
     // Chỉ lấy các box đủ tiêu chuẩn để so khớp
-    const candidates = rawBoxes.filter(b => b.conf >= KEEP_THRESHOLD);
+const candidates = rawBoxes.filter(b => {
+        const info = getVehicleInfo(b.label);
+        return info !== null && b.conf >= KEEP_THRESHOLD;
+    });
+
     const usedIndices = new Set();
     const nextTracks = [];
 
