@@ -21,7 +21,7 @@ from db.database import init_db, log_detection, get_recent_history, clear_histor
 # --- CẤU HÌNH ---
 DISPLAY_WIDTH = 854
 DISPLAY_HEIGHT = 480
-CONF_THRESHOLD = 0.25
+CONF_THRESHOLD = 0.50
 
 # Khởi tạo App & DB
 app = FastAPI()
@@ -143,9 +143,7 @@ async def start_ai(video_id: str):
         while cap.isOpened():
             if STOP_SIGNAL: break
 
-            # --- 1. KỸ THUẬT SKIP FRAME (GIẢM LAG) ---
-            # Đọc bỏ 2 frame, chỉ lấy frame thứ 3 để xử lý.
-            # Giúp giảm 66% tải CPU và mạng, video sẽ mượt hơn.
+            # --- 1. KỸ THUẬT SKIP FRAME
             cap.grab()
             cap.grab()
             success, frame = cap.read()

@@ -75,8 +75,6 @@ def clear_history():
             )
         ''')
         conn.commit()
-        print("✅ Đã xóa sạch dữ liệu và tạo bảng mới!")
-    except Exception as e:
         print(f"Lỗi xóa DB: {e}")
     finally:
         conn.close()

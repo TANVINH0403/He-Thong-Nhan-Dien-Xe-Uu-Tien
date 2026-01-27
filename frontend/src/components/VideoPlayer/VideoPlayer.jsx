@@ -4,37 +4,54 @@ import "./VideoPlayer.css";
 
 const API_URL = "http://127.0.0.1:8000";
 
-// --- CẤU HÌNH SIÊU ỔN ĐỊNH ---
-const SPAWN_THRESHOLD = 0.85; // Cần >85% mới bắt đầu tracking (Chống bắt nhầm)
-const KEEP_THRESHOLD = 0.40;  // Chỉ cần >40% là giữ tracking (Chống mất dấu)
-const MAX_STICKY_FRAMES = 10; // Giữ khung hình thêm 10 frames (0.3s) khi xe bị che (Chống nháy)
+// --- CẤU HÌNH "BÀN TAY SẮT" ---
+const KEEP_THRESHOLD = 0.50;
+const MAX_STICKY_FRAMES = 10;
 const TRACKING_DIST = 150;
 
-const getVehicleInfo = (label) => {
+// [TĂNG GẤP 3] Loại bỏ tất cả vật thể nhỏ/xa. Xe ưu tiên phải đi tới gần mới tính.
+const MIN_BOX_SIZE = 20000;
+
+// --- BỘ LỌC HÌNH DÁNG & ĐỘ TIN CẬY ---
+const getVehicleInfo = (label, conf, width, height) => {
     if (!label) return null;
     const l = label.toLowerCase();
 
-    // 1. Xe Cứu Thương
-    if (l.includes("cuu thuong")) {
+    // Tỷ lệ khung hình = Rộng / Cao
+    // Xe máy/Người đi bộ: Cao > Rộng (Ratio < 0.8)
+    // Ô tô: Rộng > Cao (Ratio > 1.0)
+    const ratio = width / height;
+
+    // 1. XE CỨU THƯƠNG
+    // Khắc phục lỗi xe trắng 7 chỗ (93%) -> Tăng lên 0.96
+    if (l.includes("cuu thuong") || l.includes("ambu")) {
+        // Nếu khung hình quá dẹt hoặc quá cao -> Bỏ qua
+        if (conf < 0.96) return null;
         return { name: "CỨU THƯƠNG", icon: "🚑", color: "#ef4444", type: "AMB" };
     }
 
-    // 2. Xe Cứu Hỏa
-    if (l.includes("cuu hoa")) {
+    // 2. XE CỨU HỎA
+    if (l.includes("cuu hoa") || l.includes("fire")) {
+        if (conf < 0.90) return null;
         return { name: "CỨU HỎA", icon: "🚒", color: "#f97316", type: "FIR" };
     }
 
-    // 3. Xe Cảnh Sát
-    if (l.includes("canh sat")) {
+    // 3. XE CẢNH SÁT (QUAN TRỌNG: DIỆT XE MÁY)
+    if (l.includes("canh sat") || l.includes("police")) {
+        // [LUẬT MỚI]: Xe cảnh sát không bao giờ Cao hơn Rộng.
+        // Nếu ratio < 1.0 (Dáng đứng/Dáng xe máy) -> VỨT BỎ NGAY LẬP TỨC
+        if (ratio < 1.0) return null;
+
+        if (conf < 0.92) return null;
         return { name: "CẢNH SÁT", icon: "🚓", color: "#3b82f6", type: "POL" };
     }
 
-    // 4. Xe Quân Đội
-    if (l.includes("quan doi")) {
+    // 4. XE QUÂN ĐỘI
+    if (l.includes("quan doi") || l.includes("army")) {
+        if (conf < 0.90) return null;
         return { name: "XE QUÂN ĐỘI", icon: "🪖", color: "#166534", type: "MIL" };
     }
 
-    // Các xe khác
     return null;
 };
 
@@ -46,7 +63,6 @@ export default function SmartVideoPlayer({ config }) {
   const canvasRef = useRef(null);
   const socketRef = useRef(null);
 
-  // State hiển thị
   const [activeVehicle, setActiveVehicle] = useState(null);
   const [systemState, setSystemState] = useState("MONITORING");
   const [analysisLogs, setAnalysisLogs] = useState([]);
@@ -55,12 +71,10 @@ export default function SmartVideoPlayer({ config }) {
   const [fileName, setFileName] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Refs Tracking (Quan trọng)
   const activeTracksRef = useRef([]);
   const processedIdsRef = useRef(new Set());
   const idCounterRef = useRef(1000);
 
-  // 1. Tải lịch sử & Khôi phục bộ nhớ ID
   const fetchHistory = async () => {
       try {
           const res = await fetch(`${API_URL}/api/history`);
@@ -69,63 +83,75 @@ export default function SmartVideoPlayer({ config }) {
           setAnalysisLogs(data.map(d => ({
               id: d.id, time: d.time, plate: d.plate, type: d.type, conf: `${Math.round(d.conf * 100)}%`
           })));
-          // Nạp lại các ID đã có vào bộ nhớ để không log trùng sau khi F5
           const ids = new Set(data.map(d => d.plate));
           processedIdsRef.current = ids;
       // eslint-disable-next-line no-unused-vars
       } catch (e) { /* empty */ }
   };
 
-  // 2. Thuật toán "Sticky Box" (Hộp dính)
   const processTracking = (rawBoxes) => {
     const currentTracks = activeTracksRef.current;
 
-    // Chỉ lấy các box đủ tiêu chuẩn để so khớp
-const candidates = rawBoxes.filter(b => {
-        const info = getVehicleInfo(b.label);
-        return info !== null && b.conf >= KEEP_THRESHOLD;
+    // --- BỘ LỌC ĐẦU VÀO (SIÊU CẤP) ---
+    const candidates = rawBoxes.filter(b => {
+        const w = b.x2 - b.x1;
+        const h = b.y2 - b.y1;
+        const area = w * h;
+
+        // 1. Lọc kích thước: Tăng lên 20000 để loại bỏ xe ở xa/nhỏ
+        if (area < MIN_BOX_SIZE) return false;
+
+        // 2. Lọc thông minh (Truyền cả Chiều rộng/Chiều cao vào để check dáng xe)
+        const info = getVehicleInfo(b.label, b.conf, w, h);
+        return info !== null;
     });
 
     const usedIndices = new Set();
     const nextTracks = [];
 
-    // A. Cập nhật xe cũ
+    // A. Update xe cũ
     currentTracks.forEach(track => {
         let bestIdx = -1;
         let minDist = TRACKING_DIST;
 
         candidates.forEach((box, idx) => {
             if (usedIndices.has(idx)) return;
-            const dist = getDistance({x: track.x, y: track.y}, {x: (box.x1+box.x2)/2, y: (box.y1+box.y2)/2});
-            if (dist < minDist && box.label === track.label) {
-                minDist = dist;
-                bestIdx = idx;
+
+            // Lấy thông tin để so khớp
+            const w = box.x2 - box.x1;
+            const h = box.y2 - box.y1;
+            const infoBox = getVehicleInfo(box.label, box.conf, w, h);
+
+            // Lấy info track cũ (giả lập w,h để bypass check)
+            const infoTrack = getVehicleInfo(track.label, 1.0, 100, 50);
+
+            if (infoBox && infoTrack && infoBox.type === infoTrack.type) {
+                const dist = getDistance({x: track.x, y: track.y}, {x: (box.x1+box.x2)/2, y: (box.y1+box.y2)/2});
+                if (dist < minDist) {
+                    minDist = dist;
+                    bestIdx = idx;
+                }
             }
         });
 
         if (bestIdx !== -1) {
-            // Tìm thấy -> Update
             const box = candidates[bestIdx];
             usedIndices.add(bestIdx);
             nextTracks.push({
                 ...track,
                 x: (box.x1 + box.x2) / 2, y: (box.y1 + box.y2) / 2,
-                box: box, conf: box.conf, stickyCount: 0 // Reset sticky
+                box: box, conf: box.conf, stickyCount: 0
             });
         } else {
-            // Mất dấu -> Tăng stickyCount (Giữ lại thêm chút nữa)
             if (track.stickyCount < MAX_STICKY_FRAMES) {
-                nextTracks.push({
-                    ...track,
-                    stickyCount: track.stickyCount + 1
-                });
+                nextTracks.push({ ...track, stickyCount: track.stickyCount + 1 });
             }
         }
     });
 
-    // B. Thêm xe mới (Chỉ khi rất rõ nét)
+    // B. Thêm xe mới
     candidates.forEach((box, idx) => {
-        if (!usedIndices.has(idx) && box.conf >= SPAWN_THRESHOLD) {
+        if (!usedIndices.has(idx)) {
             const newId = `ID-${idCounterRef.current++}`;
             nextTracks.push({
                 id: newId, x: (box.x1+box.x2)/2, y: (box.y1+box.y2)/2,
@@ -138,7 +164,6 @@ const candidates = rawBoxes.filter(b => {
     return nextTracks;
   };
 
-  // 3. Vẽ Canvas (Vẽ nét liền, không mờ)
   const drawAndAnalyze = () => {
     const tracks = activeTracksRef.current;
     const ctx = canvasRef.current?.getContext("2d");
@@ -148,36 +173,33 @@ const candidates = rawBoxes.filter(b => {
     let priority = null;
 
     tracks.forEach(t => {
-        // Luôn dùng box dữ liệu gần nhất để vẽ
         if (!t.box) return;
-        const { x1, y1, x2, y2 } = t.box;
-        const info = getVehicleInfo(t.label);
+        const w = t.box.x2 - t.box.x1;
+        const h = t.box.y2 - t.box.y1;
 
-        // VẼ KHUNG: Luôn là nét liền và đậm (Kể cả khi đang mất dấu nhẹ)
-        // Điều này giúp mắt người xem thấy mượt, không bị nhấp nháy
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = info.color;
-        ctx.setLineDash([]); // Bắt buộc nét liền
+        // Check lần cuối khi vẽ
+        const info = getVehicleInfo(t.label, t.conf, w, h);
+        if(!info) return;
+
+        const { x1, y1, x2, y2 } = t.box;
+
+        ctx.lineWidth = 3; ctx.strokeStyle = info.color; ctx.setLineDash([]);
         ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-        // Vẽ Nhãn
         ctx.fillStyle = info.color;
         const label = `${info.name} [${t.id}]`;
-        const w = ctx.measureText(label).width + 20;
-        ctx.fillRect(x1, y1 - 30, w, 30);
+        const txtW = ctx.measureText(label).width + 20;
+        ctx.fillRect(x1, y1 - 30, txtW, 30);
         ctx.fillStyle = "#fff"; ctx.font = "bold 13px sans-serif";
         ctx.fillText(label, x1 + 10, y1 - 10);
 
-        // Chỉ xử lý logic nếu xe đang rõ (stickyCount = 0)
         if (t.stickyCount === 0) {
             if (!priority || t.conf > priority.conf) priority = { ...t, info };
 
-            // Log vào DB
             if (!processedIdsRef.current.has(t.id)) {
                 const timeStr = new Date().toLocaleString('vi-VN');
                 const logItem = { vehicle_type: info.name, plate_id: t.id, confidence: t.conf };
 
-                // Update UI
                 setAnalysisLogs(prev => [{
                     id: Date.now(), time: timeStr, plate: t.id,
                     type: info.name, conf: `${Math.round(t.conf * 100)}%`
@@ -192,14 +214,11 @@ const candidates = rawBoxes.filter(b => {
         }
     });
 
-    // Cập nhật thông tin Panel
     if (priority) {
         setSystemState("TRIGGERED");
         setActiveVehicle({ ...priority.info, id: priority.id, conf: Math.round(priority.conf*100) });
     } else {
-        // Chỉ về MONITORING khi không còn xe ưu tiên nào trong khung hình
-        const hasPriority = tracks.some(t => ['AMB','FIR','POL'].includes(getVehicleInfo(t.label).type));
-        if (!hasPriority) {
+        if (tracks.length === 0) {
             setSystemState("MONITORING");
             setActiveVehicle(null);
         }
@@ -229,9 +248,8 @@ const candidates = rawBoxes.filter(b => {
   };
 
   const handleStart = async () => {
-    // eslint-disable-next-line no-undef
-    if(!videoId && !streamUrl) return alert("Chưa chọn video!");
-    activeTracksRef.current = []; // Reset tracking
+    if(!videoId && !config?.streamUrl) return alert("Chưa chọn video!");
+    activeTracksRef.current = [];
     setIsPlaying(true);
     await fetch(`${API_URL}/start-ai/${encodeURIComponent(videoId || "stream")}`, { method: "POST" });
   };
@@ -246,16 +264,16 @@ const candidates = rawBoxes.filter(b => {
 
   return (
     <div className="its-container">
-      {/* ... Phần giao diện giữ nguyên ... */}
+      {/* GIAO DIỆN GIỮ NGUYÊN */}
       <div className={`monitor-section ${systemState === 'TRIGGERED' ? 'alert-border' : ''}`}>
           <div className="section-header">
               <div className="cam-info">📹 {cameraName}</div>
-              <div className="stream-status">● SMOOTH & STABLE MODE</div>
+              <div className="stream-status">● GEOMETRIC FILTER MODE</div>
           </div>
           <div className="viewport">
               <img ref={imgRef} className="video-feed" alt="feed"/>
               <canvas ref={canvasRef} width={854} height={480} className="overlay-canvas" />
-              {!isPlaying && <div className="standby-overlay"><p>SẴN SÀNG</p></div>}
+              {!isPlaying && <div className="standby-overlay"><p>HỆ THỐNG SẴN SÀNG</p></div>}
           </div>
           <div className="controls-bar">
              <label className="file-input-label">📂 {fileName || "CHỌN VIDEO"}<input type="file" onChange={uploadVideo} style={{display:'none'}}/></label>
