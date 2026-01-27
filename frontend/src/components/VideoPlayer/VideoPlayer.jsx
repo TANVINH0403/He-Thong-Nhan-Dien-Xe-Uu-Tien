@@ -4,54 +4,34 @@ import "./VideoPlayer.css";
 
 const API_URL = "http://127.0.0.1:8000";
 
-// --- CẤU HÌNH "BÀN TAY SẮT" ---
+// --- CẤU HÌNH ---
 const KEEP_THRESHOLD = 0.50;
 const MAX_STICKY_FRAMES = 10;
 const TRACKING_DIST = 150;
-
-// [TĂNG GẤP 3] Loại bỏ tất cả vật thể nhỏ/xa. Xe ưu tiên phải đi tới gần mới tính.
 const MIN_BOX_SIZE = 20000;
 
-// --- BỘ LỌC HÌNH DÁNG & ĐỘ TIN CẬY ---
 const getVehicleInfo = (label, conf, width, height) => {
     if (!label) return null;
     const l = label.toLowerCase();
-
-    // Tỷ lệ khung hình = Rộng / Cao
-    // Xe máy/Người đi bộ: Cao > Rộng (Ratio < 0.8)
-    // Ô tô: Rộng > Cao (Ratio > 1.0)
     const ratio = width / height;
 
-    // 1. XE CỨU THƯƠNG
-    // Khắc phục lỗi xe trắng 7 chỗ (93%) -> Tăng lên 0.96
     if (l.includes("cuu thuong") || l.includes("ambu")) {
-        // Nếu khung hình quá dẹt hoặc quá cao -> Bỏ qua
         if (conf < 0.96) return null;
         return { name: "CỨU THƯƠNG", icon: "🚑", color: "#ef4444", type: "AMB" };
     }
-
-    // 2. XE CỨU HỎA
     if (l.includes("cuu hoa") || l.includes("fire")) {
         if (conf < 0.90) return null;
         return { name: "CỨU HỎA", icon: "🚒", color: "#f97316", type: "FIR" };
     }
-
-    // 3. XE CẢNH SÁT (QUAN TRỌNG: DIỆT XE MÁY)
     if (l.includes("canh sat") || l.includes("police")) {
-        // [LUẬT MỚI]: Xe cảnh sát không bao giờ Cao hơn Rộng.
-        // Nếu ratio < 1.0 (Dáng đứng/Dáng xe máy) -> VỨT BỎ NGAY LẬP TỨC
         if (ratio < 1.0) return null;
-
         if (conf < 0.92) return null;
         return { name: "CẢNH SÁT", icon: "🚓", color: "#3b82f6", type: "POL" };
     }
-
-    // 4. XE QUÂN ĐỘI
     if (l.includes("quan doi") || l.includes("army")) {
         if (conf < 0.90) return null;
         return { name: "XE QUÂN ĐỘI", icon: "🪖", color: "#166534", type: "MIL" };
     }
-
     return null;
 };
 
@@ -66,14 +46,29 @@ export default function SmartVideoPlayer({ config }) {
   const [activeVehicle, setActiveVehicle] = useState(null);
   const [systemState, setSystemState] = useState("MONITORING");
   const [analysisLogs, setAnalysisLogs] = useState([]);
-
-  const [videoId, setVideoId] = useState(null);
-  const [fileName, setFileName] = useState("");
+  const [selectedVideo, setSelectedVideo] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
 
   const activeTracksRef = useRef([]);
   const processedIdsRef = useRef(new Set());
   const idCounterRef = useRef(1000);
+
+  // Tải danh sách video VÀ tải ảnh Preview ngay lập tức
+  const fetchVideos = async () => {
+    try {
+        const res = await fetch(`${API_URL}/api/list-videos`);
+        const data = await res.json();
+        if (data.videos && data.videos.length > 0) {
+            const firstVideo = data.videos[0];
+            setSelectedVideo(firstVideo);
+
+            // Gọi API lấy ảnh Preview
+            if(imgRef.current) {
+                imgRef.current.src = `${API_URL}/api/video-preview/${encodeURIComponent(firstVideo)}`;
+            }
+        }
+    } catch(e) { console.error(e); }
+  };
 
   const fetchHistory = async () => {
       try {
@@ -92,16 +87,11 @@ export default function SmartVideoPlayer({ config }) {
   const processTracking = (rawBoxes) => {
     const currentTracks = activeTracksRef.current;
 
-    // --- BỘ LỌC ĐẦU VÀO (SIÊU CẤP) ---
     const candidates = rawBoxes.filter(b => {
         const w = b.x2 - b.x1;
         const h = b.y2 - b.y1;
         const area = w * h;
-
-        // 1. Lọc kích thước: Tăng lên 20000 để loại bỏ xe ở xa/nhỏ
         if (area < MIN_BOX_SIZE) return false;
-
-        // 2. Lọc thông minh (Truyền cả Chiều rộng/Chiều cao vào để check dáng xe)
         const info = getVehicleInfo(b.label, b.conf, w, h);
         return info !== null;
     });
@@ -109,20 +99,15 @@ export default function SmartVideoPlayer({ config }) {
     const usedIndices = new Set();
     const nextTracks = [];
 
-    // A. Update xe cũ
     currentTracks.forEach(track => {
         let bestIdx = -1;
         let minDist = TRACKING_DIST;
 
         candidates.forEach((box, idx) => {
             if (usedIndices.has(idx)) return;
-
-            // Lấy thông tin để so khớp
             const w = box.x2 - box.x1;
             const h = box.y2 - box.y1;
             const infoBox = getVehicleInfo(box.label, box.conf, w, h);
-
-            // Lấy info track cũ (giả lập w,h để bypass check)
             const infoTrack = getVehicleInfo(track.label, 1.0, 100, 50);
 
             if (infoBox && infoTrack && infoBox.type === infoTrack.type) {
@@ -149,7 +134,6 @@ export default function SmartVideoPlayer({ config }) {
         }
     });
 
-    // B. Thêm xe mới
     candidates.forEach((box, idx) => {
         if (!usedIndices.has(idx)) {
             const newId = `ID-${idCounterRef.current++}`;
@@ -176,8 +160,6 @@ export default function SmartVideoPlayer({ config }) {
         if (!t.box) return;
         const w = t.box.x2 - t.box.x1;
         const h = t.box.y2 - t.box.y1;
-
-        // Check lần cuối khi vẽ
         const info = getVehicleInfo(t.label, t.conf, w, h);
         if(!info) return;
 
@@ -228,61 +210,99 @@ export default function SmartVideoPlayer({ config }) {
   useEffect(() => {
     socketRef.current = io(API_URL);
     socketRef.current.on("frame_packet", (data) => {
+      // Khi socket gửi về thì mới update hình động
       if (imgRef.current) imgRef.current.src = "data:image/jpeg;base64," + data.image;
       processTracking(data.boxes || []);
       if (canvasRef.current) drawAndAnalyze();
     });
+
     // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchHistory();
+    fetchVideos(); // Lấy video và hiển thị ảnh bìa
     return () => socketRef.current?.disconnect();
   }, []);
 
-  const uploadVideo = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setFileName(file.name);
-    const form = new FormData(); form.append("file", file);
-    const res = await fetch(`${API_URL}/upload`, { method: "POST", body: form });
-    const data = await res.json();
-    if (data.video_id) setVideoId(data.video_id);
-  };
-
   const handleStart = async () => {
-    if(!videoId && !config?.streamUrl) return alert("Chưa chọn video!");
-    activeTracksRef.current = [];
+    if(!selectedVideo) return alert("Hệ thống chưa tìm thấy video trong folder uploads!");
+
     setIsPlaying(true);
-    await fetch(`${API_URL}/start-ai/${encodeURIComponent(videoId || "stream")}`, { method: "POST" });
+    activeTracksRef.current = [];
+    await fetch(`${API_URL}/start-ai/${encodeURIComponent(selectedVideo)}`, { method: "POST" });
   };
 
   const handleStop = async () => {
     await fetch(`${API_URL}/stop-ai`, { method: "POST" });
-    setIsPlaying(false); setActiveVehicle(null); setSystemState("MONITORING");
+    setIsPlaying(false);
+    setActiveVehicle(null);
+    setSystemState("MONITORING");
     activeTracksRef.current = [];
+
+    // Clear canvas
     const ctx = canvasRef.current?.getContext("2d");
     if(ctx) ctx.clearRect(0, 0, 854, 480);
+
+    // Khi dừng lại, load lại ảnh bìa ban đầu (để không bị đen màn hình)
+    if(imgRef.current && selectedVideo) {
+        imgRef.current.src = `${API_URL}/api/video-preview/${encodeURIComponent(selectedVideo)}`;
+    }
   };
 
   return (
     <div className="its-container">
-      {/* GIAO DIỆN GIỮ NGUYÊN */}
       <div className={`monitor-section ${systemState === 'TRIGGERED' ? 'alert-border' : ''}`}>
           <div className="section-header">
               <div className="cam-info">📹 {cameraName}</div>
-              <div className="stream-status">● GEOMETRIC FILTER MODE</div>
+              <div className="stream-status">● SYSTEM READY</div>
           </div>
+
           <div className="viewport">
-              <img ref={imgRef} className="video-feed" alt="feed"/>
+              {/* LUÔN HIỂN THỊ ẢNH (Ban đầu là ảnh tĩnh từ API, sau là ảnh động từ Socket) */}
+              <img ref={imgRef} className="video-feed" alt="feed" style={{display: 'block'}}/>
               <canvas ref={canvasRef} width={854} height={480} className="overlay-canvas" />
-              {!isPlaying && <div className="standby-overlay"><p>HỆ THỐNG SẴN SÀNG</p></div>}
           </div>
-          <div className="controls-bar">
-             <label className="file-input-label">📂 {fileName || "CHỌN VIDEO"}<input type="file" onChange={uploadVideo} style={{display:'none'}}/></label>
+
+          <div className="controls-bar" style={{justifyContent: 'center', padding: '15px', background: 'transparent'}}>
              <div className="btns">
-                 {!isPlaying ? <button className="btn-go" onClick={handleStart}>BẮT ĐẦU</button> : <button className="btn-stop" onClick={handleStop}>DỪNG LẠI</button>}
+                 {!isPlaying ? (
+                    <button onClick={handleStart} style={{
+                        padding: '10px 25px',
+                        fontSize: '14px',
+                        borderRadius: '20px',
+                        background: 'linear-gradient(90deg, #3b82f6, #2563eb)',
+                        color: 'white',
+                        border: 'none',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)',
+                        transition: 'all 0.2s ease',
+                        display: 'flex', alignItems: 'center', gap: '8px'
+                    }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                       onMouseOut={e => e.currentTarget.style.transform = 'scale(1.0)'}>
+                        <span>▶</span> BẮT ĐẦU
+                    </button>
+                 ) : (
+                    <button onClick={handleStop} style={{
+                        padding: '10px 25px',
+                        fontSize: '14px',
+                        borderRadius: '20px',
+                        background: 'linear-gradient(90deg, #ef4444, #dc2626)',
+                        color: 'white',
+                        border: 'none',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 10px rgba(239, 68, 68, 0.3)',
+                        transition: 'all 0.2s ease',
+                        display: 'flex', alignItems: 'center', gap: '8px'
+                    }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                       onMouseOut={e => e.currentTarget.style.transform = 'scale(1.0)'}>
+                        <span>⏹</span> DỪNG LẠI
+                    </button>
+                 )}
              </div>
           </div>
       </div>
 
+      {/* CỘT PHẢI GIỮ NGUYÊN */}
       <div className="data-sidebar">
           <div className="sidebar-block traffic-block">
               <div className="traffic-lights-visual">
