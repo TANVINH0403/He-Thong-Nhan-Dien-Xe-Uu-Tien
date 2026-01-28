@@ -3,7 +3,6 @@ venv/
 *.pyc
 node_modules/
 .env
-*.mp4
 *.exe
 .vscode/
 .idea/
