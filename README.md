@@ -1,4 +1,4 @@
-# 🚑 Hệ Thống Nhận Diện Xe Ưu Tiên Thông Minh - - Nhóm Thanh Hải , Tấn Vinh , Tấn Triều - Đại Học Giao Thông Vận Tải TP-HCM 
+# 🚑 Hệ Thống Nhận Diện Xe Ưu Tiên Thông Minh - Nhóm Thanh Hải , Tấn Vinh , Tấn Triều - Đại Học Giao Thông Vận Tải TP-HCM 
 Hệ thống sử dụng Trí tuệ nhân tạo (AI) để nhận diện và theo dõi các loại xe ưu tiên (Cứu thương, Cứu hỏa, Cảnh sát, Quân đội) từ camera giao thông hoặc video tải lên. Hệ thống giúp điều phối đèn tín hiệu giao thông thông minh.
 
 ## 🚀 Tính năng chính
