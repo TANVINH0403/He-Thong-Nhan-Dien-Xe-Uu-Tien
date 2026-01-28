@@ -1,8 +1,5 @@
-# 🚑 Hệ Thống Nhận Diện Xe Ưu Tiên Thông Minh (Smart ITS)
-
+# 🚑 Hệ Thống Nhận Diện Xe Ưu Tiên Thông Minh 
 Hệ thống sử dụng Trí tuệ nhân tạo (AI) để nhận diện và theo dõi các loại xe ưu tiên (Cứu thương, Cứu hỏa, Cảnh sát, Quân đội) từ camera giao thông hoặc video tải lên. Hệ thống giúp điều phối đèn tín hiệu giao thông thông minh.
-
-![Demo](https://via.placeholder.com/800x400?text=He+Thong+ITS+Demo)
 
 ## 🚀 Tính năng chính
 
