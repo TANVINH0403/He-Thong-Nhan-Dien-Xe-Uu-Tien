@@ -1,28 +1,33 @@
-🚑 Hệ Thống Nhận Diện Xe Ưu Tiên Thông Minh  - Nhóm Thanh Hải , Tấn Vinh , Tấn Triều - Đại Học Giao Thông Vận Tải TP-HCM
+# 🚑 Hệ Thống Nhận Diện Xe Ưu Tiên Thông Minh (Smart ITS)
+
 Hệ thống sử dụng Trí tuệ nhân tạo (AI) để nhận diện và theo dõi các loại xe ưu tiên (Cứu thương, Cứu hỏa, Cảnh sát, Quân đội) từ camera giao thông hoặc video tải lên. Hệ thống giúp điều phối đèn tín hiệu giao thông thông minh.
-🚀 Tính năng chính
-Nhận diện đa lớp: Phân loại chính xác xe Cứu thương, Cứu hỏa, Cảnh sát, Quân sự.
 
-Bộ lọc thông minh (Dual Filter): Loại bỏ nhận diện sai (xe taxi, xe con màu trắng) dựa trên phân tích Tỷ lệ (Ratio) và Diện tích (Area).
+![Demo](https://via.placeholder.com/800x400?text=He+Thong+ITS+Demo)
 
-Xử lý đa luồng (Multi-threading): Đảm bảo video chạy mượt mà 30-60 FPS ngay cả khi AI đang xử lý nặng.
+## 🚀 Tính năng chính
 
-Tracking thời gian thực: Bám sát đối tượng và gán ID định danh.
+* **Nhận diện đa lớp:** Phân loại chính xác xe Cứu thương, Cứu hỏa, Cảnh sát, Quân sự.
+* **Bộ lọc thông minh (Dual Filter):** Loại bỏ nhận diện sai (xe taxi, xe con màu trắng) dựa trên phân tích Tỷ lệ (Ratio) và Diện tích (Area).
+* **Xử lý đa luồng (Multi-threading):** Đảm bảo video chạy mượt mà 30-60 FPS ngay cả khi AI đang xử lý nặng.
+* **Tracking thời gian thực:** Bám sát đối tượng và gán ID định danh.
+* **Giao diện trực quan:** Hiển thị cảnh báo, đèn tín hiệu giả lập và thống kê lịch sử.
 
-Giao diện trực quan: Hiển thị cảnh báo, đèn tín hiệu giả lập và thống kê lịch sử.
+---
 
-🛠️ Yêu cầu hệ thống
+## 🛠️ Yêu cầu hệ thống
+
 Trước khi cài đặt, hãy đảm bảo máy tính của bạn đã cài:
 
-Node.js (v16 trở lên) - Cho Frontend.
+1.  **Node.js** (v16 trở lên) - Cho Frontend.
+2.  **Python** (v3.9 trở lên) - Cho Backend.
+3.  **Git** (Để tải mã nguồn).
 
-Python (v3.9 trở lên) - Cho Backend.
+---
 
-Git (Để tải mã nguồn).
+## 📦 Hướng dẫn Cài đặt & Chạy
 
-📦 Hướng dẫn Cài đặt & Chạy
 Cấu trúc dự án giả định:
-
+```text
 project-folder/
 ├── backend/   (Mã nguồn Python)
 └── frontend/  (Mã nguồn ReactJS)
