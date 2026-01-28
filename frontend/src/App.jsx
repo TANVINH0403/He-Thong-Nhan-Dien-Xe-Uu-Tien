@@ -5,11 +5,11 @@ import VideoPlayer from "./components/VideoPlayer/VideoPlayer.jsx";
 import SettingsModal from "./components/SettingsModal/SettingsModal.jsx";
 
 const DEFAULT_CONFIG = {
-  cameraName: "CAM-01: NGÃ TƯ NGUYỄN TRÃI",
+  cameraName: "CAM-01: ",
   streamUrl: "",
   minConfidence: 60,
   signalThreshold: 85,
-  enableOCR: true
+  enableOCR: true,
 };
 
 function App() {
@@ -19,7 +19,12 @@ function App() {
     return saved ? JSON.parse(saved) : DEFAULT_CONFIG;
   });
 
-  const [stats, setStats] = useState({ today: 0, ambulance: 0, firetruck: 0, police: 0 });
+  const [stats, setStats] = useState({
+    today: 0,
+    ambulance: 0,
+    firetruck: 0,
+    police: 0,
+  });
 
   // 1. KHAI BÁO HÀM TRƯỚC (Move to Top)
   const fetchStats = async () => {
@@ -28,8 +33,10 @@ function App() {
       if (!res.ok) return;
       const data = await res.json();
       setStats(data);
-    // eslint-disable-next-line no-unused-vars
-    } catch (e) { /* empty */ }
+      // eslint-disable-next-line no-unused-vars
+    } catch (e) {
+      /* empty */
+    }
   };
 
   const handleReset = async () => {
@@ -38,7 +45,9 @@ function App() {
       await fetch("http://127.0.0.1:8000/api/reset-data", { method: "DELETE" });
       setStats({ today: 0, ambulance: 0, firetruck: 0, police: 0 });
       alert("✅ Đã xóa dữ liệu thành công!");
-    } catch (e) { alert("Lỗi: " + e.message); }
+    } catch (e) {
+      alert("Lỗi: " + e.message);
+    }
   };
 
   // 2. USEEFFECT GỌI HÀM SAU
@@ -54,7 +63,7 @@ function App() {
     <div className="app-layout">
       <Header onOpenSettings={() => setIsSettingsOpen(true)} stats={stats} />
       <main className="main-wrapper">
-         <VideoPlayer config={config} />
+        <VideoPlayer config={config} />
       </main>
       <SettingsModal
         isOpen={isSettingsOpen}

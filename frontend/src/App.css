@@ -11,7 +11,7 @@ body {
   font-family: 'Segoe UI', sans-serif;
   height: 100vh;
   width: 100vw;
-  overflow: hidden; /* Chặn thanh cuộn thừa */
+  overflow: hidden;
 }
 
 .app-layout {
@@ -21,8 +21,8 @@ body {
 }
 
 .main-wrapper {
-  flex: 1; /* Chiếm toàn bộ phần còn lại dưới Header */
+  flex: 1;
   position: relative;
   overflow: hidden;
-  display: flex; /* Quan trọng để con cái full chiều cao */
+  display: flex;
 }
